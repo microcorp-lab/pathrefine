@@ -1,0 +1,4 @@
+# Redirect pathrefine.com to pathrefine.dev (set these up in Cloudflare Dashboard)
+# For now, these need to be configured in Custom Domains settings
+
+# Redirect www subdomain to apex (works automatically with Pages)

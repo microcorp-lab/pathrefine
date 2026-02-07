@@ -1,0 +1,474 @@
+import React, { useCallback, useState } from 'react';
+import { useEditorStore } from '../../store/editorStore';
+import { smoothPath, organicSmoothPath } from '../../engine/pathSmoothing';
+import { healPathMultiple } from '../../engine/smartHeal';
+import { countAnchorPoints } from '../../engine/pathAnalysis';
+import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
+import { joinPoints } from '../../engine/pathEditor';
+import { PerfectSquareModal } from '../PerfectSquareModal/PerfectSquareModal';
+import { AutoColorizeModal } from '../AutoColorizeModal/AutoColorizeModal';
+import { AutoRefineModal } from '../AutoRefineModal/AutoRefineModal';
+import { SmoothPathModal } from '../SmoothPathModal/SmoothPathModal';
+import { MergePathsModal } from '../MergePathsModal/MergePathsModal';
+import { PathAlignmentModal } from '../PathAlignmentModal/PathAlignmentModal';
+import { RestrictedFeature } from '../RestrictedFeature';
+import { alignPathsToPath } from '../../engine/alignment';
+import { Activity, Waves, Link, Palette, Sparkles, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2 } from 'lucide-react';
+import type { Tool, PathAlignment, Path } from '../../types/svg';
+import { toast } from 'sonner';
+
+interface ToolButtonProps {
+  tool: Tool;
+  icon: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}
+
+const ToolButton: React.FC<ToolButtonProps> = ({ icon, label, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`
+      w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center
+      transition-all duration-200 text-lg sm:text-xl
+      ${active 
+        ? 'bg-accent-primary text-white shadow-lg' 
+        : 'bg-bg-secondary text-text-secondary hover:bg-border hover:text-white'
+      }
+    `}
+    title={label}
+  >
+    {icon}
+  </button>
+);
+
+export const Toolbar: React.FC = () => {
+  const activeTool = useEditorStore(state => state.activeTool);
+  const setTool = useEditorStore(state => state.setTool);
+  const setSVGDocument = useEditorStore(state => state.setSVGDocument);
+  const svgDocument = useEditorStore(state => state.svgDocument);
+  const selectedPathIds = useEditorStore(state => state.selectedPathIds);
+  const editingPathId = useEditorStore(state => state.editingPathId);
+  const selectedPointIndices = useEditorStore(state => state.selectedPointIndices);
+  const clearPointSelection = useEditorStore(state => state.clearPointSelection);
+  const updatePath = useEditorStore(state => state.updatePath);
+  const snapToGrid = useEditorStore(state => state.snapToGrid);
+  const toggleSnapToGrid = useEditorStore(state => state.toggleSnapToGrid);
+  const showHeatmap = useEditorStore(state => state.showHeatmap);
+  const toggleHeatmap = useEditorStore(state => state.toggleHeatmap);
+
+  const [showPerfectSquareModal, setShowPerfectSquareModal] = useState(false);
+  const [showAutoColorizeModal, setShowAutoColorizeModal] = useState(false);
+  const [showAutoRefineModal, setShowAutoRefineModal] = useState(false);
+  const [showSmoothModal, setShowSmoothModal] = useState(false);
+  const [showSmartHealModal, setShowSmartHealModal] = useState(false);
+  const [showMergePathsModal, setShowMergePathsModal] = useState(false);
+  const [showPathAlignmentModal, setShowPathAlignmentModal] = useState(false);
+
+  // Listen for keyboard shortcut to open Path Alignment
+  React.useEffect(() => {
+    const handleOpenPathAlignment = () => {
+      if (svgDocument && svgDocument.paths.length >= 2) {
+        setShowPathAlignmentModal(true);
+      }
+    };
+    window.addEventListener('openPathAlignment', handleOpenPathAlignment);
+    return () => window.removeEventListener('openPathAlignment', handleOpenPathAlignment);
+  }, [svgDocument]);
+
+  const handleSmoothPath = useCallback(() => {
+    if (!svgDocument || selectedPathIds.length === 0) {
+      alert('Please select a path to smooth');
+      return;
+    }
+
+    // Open modal instead of directly smoothing
+    setShowSmoothModal(true);
+  }, [svgDocument, selectedPathIds]);
+
+  const handleAutoColorize = useCallback(() => {
+    // Check if user is PRO -> now handled by RestrictedFeature but we keep this as fallback/logic holder
+    // If we want modal to only show if PRO:
+    // if (!isPro) return; 
+    
+    // But since we use 'bypass' mode in RestrictedFeature, clicking the button triggers this ONLY if PRO
+    // If not PRO, RestrictedFeature intercepts it.
+    
+    if (!svgDocument || selectedPathIds.length === 0) {
+      if (!svgDocument || svgDocument.paths.length === 0) {
+        alert('Please open an SVG first');
+      } else {
+        // If no paths selected, maybe select all? Or just show modal for whole doc
+        setShowAutoColorizeModal(true);
+      }
+      return;
+    }
+    setShowAutoColorizeModal(true);
+  }, [svgDocument, selectedPathIds]);
+
+  const handleAutoRefine = useCallback(() => {
+    if (!svgDocument || selectedPathIds.length === 0) {
+      alert('Please select a path to refine');
+      return;
+    }
+    setShowAutoRefineModal(true);
+  }, [svgDocument, selectedPathIds]);
+
+  const handleApplySmooth = useCallback((
+    mode: 'polish' | 'organic',
+    smoothness: number,
+    convertLinesToCurves: boolean,
+    selectedPointsOnly: boolean,
+    preserveSmooth: boolean,
+    cornerAngle: number
+  ) => {
+    if (!svgDocument || selectedPathIds.length === 0) return;
+
+    selectedPathIds.forEach(pathId => {
+      const path = svgDocument.paths.find(p => p.id === pathId);
+      if (path) {
+        if (mode === 'organic') {
+          const smoothed = organicSmoothPath(path, smoothness, true, cornerAngle);
+          updatePath(pathId, smoothed, 'Organic smooth');
+          // Calculate stats for toast
+          const originalPoints = path.segments.reduce((acc, seg) => acc + seg.points.length + 1, 0); // approx
+          const newPoints = smoothed.segments.reduce((acc, seg) => acc + seg.points.length + 1, 0); // approx
+          toast.success(`Smoothed path organically`, {
+            description: `Reduced jitter with ${Math.round(smoothness * 100)}% strength`
+          });
+        } else {
+          const smoothed = smoothPath(
+            path,
+            smoothness,
+            convertLinesToCurves,
+            selectedPointsOnly && editingPathId === pathId ? selectedPointIndices : undefined,
+            preserveSmooth
+          );
+          updatePath(pathId, smoothed, 'Polish curves');
+          toast.success(`Polished path curves`, {
+            description: `Applied ${Math.round(smoothness * 100)}% smoothing factor`
+          });
+        }
+      }
+    });
+  }, [svgDocument, selectedPathIds, editingPathId, selectedPointIndices, updatePath]);
+
+  const handleHealPath = useCallback(() => {
+    if (!svgDocument || selectedPathIds.length === 0) {
+      alert('Please select a path to heal');
+      return;
+    }
+
+    setShowSmartHealModal(true);
+  }, [svgDocument, selectedPathIds]);
+
+  const handleApplySmartHeal = useCallback((resultPath: Path, originalPathId: string) => {
+    if (!svgDocument) return;
+
+    // We received the fully calculated path from the modal
+    // This allows the modal to use advanced logic (Auto Heal) that we can't easily replicate here just by "points to remove"
+    
+    // Find the original path to calculate stats
+    const originalPath = svgDocument.paths.find(p => p.id === originalPathId);
+    if (originalPath) {
+      // Calculate original anchor points
+      const originalCount = countAnchorPoints(originalPath);
+      
+      // Update with the Result Path directly
+      updatePath(originalPathId, resultPath, `Smart Heal`);
+      
+      // Calculate new anchor points
+      const newCount = countAnchorPoints(resultPath);
+      const diff = originalCount - newCount;
+      
+      toast.success(`Smart Heal complete`, {
+        description: `Removed ${diff} redundant point${diff !== 1 ? 's' : ''} (${Math.round((diff/originalCount)*100)}%)`
+      });
+    }
+  }, [svgDocument, updatePath]);
+
+  const handleJoinPoints = useCallback(() => {
+    if (!svgDocument || !editingPathId || selectedPointIndices.length < 2) {
+      alert('Please select at least 2 points to join');
+      return;
+    }
+
+    const path = svgDocument.paths.find(p => p.id === editingPathId);
+    if (path) {
+      const joined = joinPoints(path, selectedPointIndices);
+      updatePath(editingPathId, joined, 'Join points');
+      clearPointSelection();
+      toast.success('Joined points', {
+        description: 'Selected points connected, intermediate points removed'
+      });
+    }
+  }, [svgDocument, editingPathId, selectedPointIndices, updatePath, clearPointSelection]);
+
+  const handleMergePaths = useCallback(() => {
+    if (!svgDocument) {
+      alert('No document loaded');
+      return;
+    }
+
+    // Always show modal for user control
+    setShowMergePathsModal(true);
+  }, [svgDocument]);
+
+
+  const handlePerfectSquare = useCallback(() => {
+    if (!svgDocument) {
+      alert('No document loaded');
+      return;
+    }
+
+    setShowPerfectSquareModal(true);
+  }, [svgDocument]);
+
+  const handlePathAlignment = useCallback(() => {
+    if (!svgDocument || svgDocument.paths.length < 2) {
+      alert('Please load an SVG with at least 2 paths');
+      return;
+    }
+
+    setShowPathAlignmentModal(true);
+  }, [svgDocument]);
+
+  const handleApplyPathAlignment = useCallback((alignment: PathAlignment) => {
+    if (!svgDocument) return;
+
+    const sourcePath = svgDocument.paths.find(p => p.id === alignment.sourcePathId);
+    const targetPath = svgDocument.paths.find(p => p.id === alignment.targetPathId);
+
+    if (!sourcePath || !targetPath) {
+      alert('Source or target path not found');
+      return;
+    }
+
+    // Generate aligned paths
+    const alignedPaths = alignPathsToPath(sourcePath, targetPath, alignment);
+
+    // Add all aligned paths to the document
+    const newDoc = {
+      ...svgDocument,
+      paths: [...svgDocument.paths, ...alignedPaths],
+    };
+
+    setSVGDocument(newDoc, `Align ${alignedPaths.length} path${alignedPaths.length > 1 ? 's' : ''} to path`);
+    
+    toast.success('Path Alignment Applied', {
+      description: `Created ${alignedPaths.length} new aligned path${alignedPaths.length > 1 ? 's' : ''}`
+    });
+  }, [svgDocument, setSVGDocument]);
+
+  return (
+    <>
+    <div className="w-16 bg-bg-secondary border-r border-border flex flex-col items-center py-2 sm:py-4 gap-1 sm:gap-2 overflow-y-auto hide-scrollbar">
+      
+      {/* ACTIONS - Path Operations */}
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <div className="text-[7px] sm:text-[8px] text-text-secondary text-center uppercase tracking-wider mb-1">
+          Actions
+        </div>
+        <button
+          onClick={handleHealPath}
+          disabled={!svgDocument || selectedPathIds.length === 0}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-green-600 hover:bg-green-700 text-white text-lg sm:text-xl transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-bg-secondary"
+          title="Smart Heal (Remove 1 point)"
+        >
+          <Activity size={20} strokeWidth={1.5} />
+        </button>
+
+        <RestrictedFeature
+          featureId="auto_refine"
+          name="Auto Refine"
+          description="Automatic 4-step processing"
+          mode="bypass"
+          onRestrictedClick={handleAutoRefine}
+        >
+        <button
+          onClick={handleAutoRefine}
+          disabled={!svgDocument || selectedPathIds.length === 0}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-accent-primary text-white hover:bg-accent-secondary text-lg sm:text-xl transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-bg-secondary relative"
+          title="Auto Refine (Magic Fix)"
+        >
+          <Wand2 size={20} strokeWidth={1.5} />
+          <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+        </button>
+        </RestrictedFeature>
+        
+        <button
+          onClick={handleSmoothPath}
+          disabled={!svgDocument || selectedPathIds.length === 0}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Smooth Path (S)"
+        >
+          <Waves size={20} strokeWidth={1.5} />
+        </button>
+        
+        <button
+          onClick={handleJoinPoints}
+          disabled={!editingPathId || selectedPointIndices.length < 2}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Join Points (J) - Remove intermediate points"
+        >
+          <Link size={20} strokeWidth={1.5} />
+        </button>
+        
+        <button
+          onClick={handleMergePaths}
+          disabled={!svgDocument || svgDocument.paths.length < 2}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title={selectedPathIds.length >= 2 ? "Merge Selected Paths (M)" : "Merge Paths (M) - Combine similar colors"}
+        >
+          <Palette size={20} strokeWidth={1.5} />
+        </button>
+        
+        <button
+          onClick={handlePathAlignment}
+          disabled={!svgDocument || svgDocument.paths.length < 2}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Path Alignment (Shift+A) - Align shapes along paths"
+        >
+          <AlignVerticalDistributeCenter size={20} strokeWidth={1.5} />
+        </button>
+        
+        <RestrictedFeature
+          featureId="auto_colorize"
+          name="Auto Colorize"
+          description="Intelligent color mapping"
+          mode="bypass"
+          onRestrictedClick={handleAutoColorize}
+        >
+        <button
+          onClick={handleAutoColorize}
+          disabled={!svgDocument || svgDocument.paths.length === 0}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed relative"
+          title="Auto-colorize (C) - Replace colors with currentColor [PRO]"
+        >
+          <Sparkles size={20} strokeWidth={1.5} />
+          <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+        </button>
+        </RestrictedFeature>
+        
+        <button
+          onClick={handlePerfectSquare}
+          disabled={!svgDocument || svgDocument.paths.length === 0}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          title="Perfect Square (Q) - Center in 24×24 viewBox"
+        >
+          <Square size={20} strokeWidth={1.5} />
+        </button>
+      </div>
+      
+      <div className="w-10 h-px bg-border my-1 sm:my-2" />
+      
+      {/* VIEW OPTIONS */}
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <div className="text-[7px] sm:text-[8px] text-text-secondary text-center uppercase tracking-wider mb-1">
+          View
+        </div>
+        <button
+          onClick={toggleSnapToGrid}
+          className={`
+            w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-lg sm:text-xl
+            transition-all duration-200
+            ${snapToGrid 
+              ? 'bg-accent-success text-white shadow-lg' 
+              : 'bg-bg-secondary text-text-secondary hover:bg-border hover:text-white'
+            }
+          `}
+          title="Snap to Grid (G)"
+        >
+          <Grid3x3 size={20} strokeWidth={1.5} />
+        </button>
+        
+        <button
+          onClick={toggleHeatmap}
+          className={`
+            w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center text-lg sm:text-xl
+            transition-all duration-200
+            ${showHeatmap 
+              ? 'bg-red-500 text-white shadow-lg' 
+              : 'bg-bg-secondary text-text-secondary hover:bg-border hover:text-white'
+            }
+          `}
+          title="Complexity Heatmap (X)"
+        >
+          <Flame size={20} strokeWidth={1.5} />
+        </button>
+      </div>
+      
+      {/* Spacer to push future tools to bottom if needed */}
+      <div className="flex-1" />
+      
+      {/* FUTURE: Advanced Tools */}
+      {/* Uncomment when implementing these features
+      <div className="w-10 h-px bg-border my-2" />
+      <ToolButton
+        tool="align"
+        icon="🎯"
+        label="Align Path (A)"
+        active={activeTool === 'align'}
+        onClick={() => setTool('align')}
+      />
+      
+      <ToolButton
+        tool="measure"
+        icon="📏"
+        label="Measure (M)"
+        active={activeTool === 'measure'}
+        onClick={() => setTool('measure')}
+      />
+      
+      <ToolButton
+        tool="animate"
+        icon="✨"
+        label="Animate (K)"
+        active={activeTool === 'animate'}
+        onClick={() => setTool('animate')}
+      />
+      */}
+    </div>
+
+      {/* Modals */}
+      <PerfectSquareModal 
+        isOpen={showPerfectSquareModal} 
+        onClose={() => setShowPerfectSquareModal(false)} 
+      />
+      <AutoColorizeModal 
+        isOpen={showAutoColorizeModal} 
+        onClose={() => setShowAutoColorizeModal(false)} 
+      />
+      <AutoRefineModal 
+        isOpen={showAutoRefineModal} 
+        onClose={() => setShowAutoRefineModal(false)} 
+      />
+      {showSmoothModal && (
+        <SmoothPathModal
+          onClose={() => setShowSmoothModal(false)}
+          onApply={handleApplySmooth}
+        />
+      )}
+      {showSmartHealModal && (
+        <SmartHealModal
+          onClose={() => setShowSmartHealModal(false)}
+          onApply={handleApplySmartHeal}
+        />
+      )}
+      {showMergePathsModal && (
+        <MergePathsModal
+          onClose={() => setShowMergePathsModal(false)}
+        />
+      )}
+      {showPathAlignmentModal && svgDocument && (
+        <PathAlignmentModal
+          isOpen={showPathAlignmentModal}
+          onClose={() => setShowPathAlignmentModal(false)}
+          onApply={handleApplyPathAlignment}
+          availablePaths={svgDocument.paths}
+          selectedPathIds={selectedPathIds}
+        />
+      )}
+    </>
+  );
+};

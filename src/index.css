@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+#root {
+  width: 100vw;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2d2d2d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+/* Hide scrollbar but keep functionality (Apple-style) */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --accent-primary: #6366f1;
+  --accent-success: #10b981;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --border: #404040;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Remove duplicate body/#root rules - they're already defined at the top */
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+button, input, select {
+  transition: all 0.2s ease;
+}
+
+/* Monaco Editor Code Highlighting */
+.highlighted-path {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* Blue highlight with transparency */
+}
+
+.highlighted-glyph {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  width: 4px !important;
+  margin-left: 3px;
+}
+
+/* Inline character-level highlighting for specific point coordinates */
+.monaco-editor .highlighted-path {
+  background-color: rgba(59, 130, 246, 0.25) !important;
+  border-radius: 2px;
+  padding: 0 2px;
+}

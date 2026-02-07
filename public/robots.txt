@@ -1,0 +1,10 @@
+# robots.txt for pathrefine.dev
+# Allow all search engines to crawl everything
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://pathrefine.dev/sitemap.xml
+
+# Crawl-delay is not needed for a static site

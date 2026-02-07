@@ -1,0 +1,1 @@
+export { MergePathsModal } from './MergePathsModal';

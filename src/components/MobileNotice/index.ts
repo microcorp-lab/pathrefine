@@ -1,0 +1,1 @@
+export { MobileNotice } from './MobileNotice';
