@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { useEditorStore } from '../../store/editorStore';
-import { smoothPath, organicSmoothPath } from '../../engine/pathSmoothing';
+import { smoothPath } from '../../engine/pathSmoothing';
 import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
 import { Lock } from 'lucide-react';
 import type { Path } from '../../types/svg';
+import { ProFeaturesContext } from '../../main';
 
 type SmoothMode = 'polish' | 'organic';
 
@@ -20,6 +21,11 @@ interface SmoothPathModalProps {
 }
 
 export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
+  // Get PRO features from context
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { organicSmoothPath } = proFeatures.engine;
+  
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   const editingPathId = useEditorStore(state => state.editingPathId);

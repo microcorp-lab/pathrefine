@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { parseSVG, segmentsToPathData } from '../../engine/parser';
-import { autoRefinePath } from '../../engine/pathSmoothing';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { extractAnchorPoints } from '../../engine/pathEditor';
 import { DEMO_LOGO_SVG } from '../../data/demoLogo';
 import { Path, Command } from '../../types/svg';
 import { Wand2, RefreshCw, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ProFeaturesContext } from '../../main';
 
 export const LandingPageDemo: React.FC = () => {
+  // Get PRO features from context
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { autoRefinePath } = proFeatures.engine;
+  
   const [originalPaths, setOriginalPaths] = useState<Path[]>([]);
   const [currentPaths, setCurrentPaths] = useState<Path[]>([]);
   const [isRefined, setIsRefined] = useState(false);

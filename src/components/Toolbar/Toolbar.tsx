@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
-import { smoothPath, organicSmoothPath } from '../../engine/pathSmoothing';
+import { smoothPath } from '../../engine/pathSmoothing';
 import { healPathMultiple } from '../../engine/smartHeal';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
@@ -16,6 +16,7 @@ import { alignPathsToPath } from '../../engine/alignment';
 import { Activity, Waves, Link, Palette, Sparkles, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2 } from 'lucide-react';
 import type { Tool, PathAlignment, Path } from '../../types/svg';
 import { toast } from 'sonner';
+import { ProFeaturesContext } from '../../main';
 
 interface ToolButtonProps {
   tool: Tool;
@@ -43,6 +44,11 @@ const ToolButton: React.FC<ToolButtonProps> = ({ icon, label, active, onClick })
 );
 
 export const Toolbar: React.FC = () => {
+  // Get PRO features from context
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { organicSmoothPath } = proFeatures.engine;
+  
   const activeTool = useEditorStore(state => state.activeTool);
   const setTool = useEditorStore(state => state.setTool);
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);

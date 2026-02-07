@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Toolbar } from './components/Toolbar/Toolbar';
 import { CanvasWithCode } from './components/Canvas/CanvasWithCode';
@@ -6,19 +6,11 @@ import { PropertiesPanel } from './components/PropertiesPanel/PropertiesPanel';
 import { HelpOverlay } from './components/HelpOverlay/HelpOverlay';
 import { ImageConverter } from './components/ImageConverter/ImageConverter';
 import { LandingPage } from './components/LandingPage/LandingPage';
-import { ExportModal } from './components/ExportModal/ExportModal';
 import { ExportSVGModal } from './components/ExportSVGModal';
-import { ImageExportModal } from './components/ImageExportModal';
-import { ProFeatureModal } from './components/ProFeatureModal/ProFeatureModal';
 import { SmartHealModal } from './components/SmartHealModal/SmartHealModal';
 import { SmoothPathModal } from './components/SmoothPathModal/SmoothPathModal';
-import { UpgradeModal } from './components/UpgradeModal';
-import { WelcomeProModal } from './components/WelcomeProModal/WelcomeProModal';
-import { AuthModal } from './components/AuthModal/AuthModal';
-import { UserMenu } from './components/UserMenu';
 import { BenchmarkPage } from './components/BenchmarkPage';
 import { useEditorStore } from './store/editorStore';
-import { useAuthStore } from './store/authStore';
 import { exportSVG, parseSVG } from './engine/parser';
 import { mergeSimilarPaths, mergeSelectedPaths } from './engine/pathMerging';
 import { autoColorize } from './engine/pathEditor';
@@ -29,9 +21,14 @@ import { Trash2 } from 'lucide-react';
 import { MobileNotice } from './components/MobileNotice';
 import { Dropdown } from './components/Dropdown';
 import { Toaster, toast } from 'sonner';
+import { ProFeaturesContext } from './main';
+import { Toaster, toast } from 'sonner';
 
 function App() {
   const navigate = useNavigate();
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { useAuthStore } = proFeatures.hooks;
   const initialize = useAuthStore((state) => state.initialize);
 
   // Initialize auth listener on app mount
@@ -53,6 +50,21 @@ function App() {
 
 function EditorView() {
   const navigate = useNavigate();
+  
+  // Get PRO features from context
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { 
+    ProFeatureModal, 
+    AuthModal, 
+    UpgradeModal, 
+    WelcomeProModal, 
+    ExportModal, 
+    ImageExportModal,
+    UserMenu 
+  } = proFeatures.components;
+  const { useAuthStore } = proFeatures.hooks;
+  
   const svgDocument = useEditorStore((state) => state.svgDocument);
   const setSVGDocument = useEditorStore((state) => state.setSVGDocument);
   const selectedPathIds = useEditorStore((state) => state.selectedPathIds);
