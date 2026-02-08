@@ -38,18 +38,14 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   );
   const [preserveSmooth, setPreserveSmooth] = useState(false); // Changed to false for immediate visible effect
   const [cornerAngle, setCornerAngle] = useState(30);
-  const [jitterReduction, setJitterReduction] = useState<number | null>(null);
   const [previewZoom, setPreviewZoom] = useState(1);
   const [previewPan, setPreviewPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [showControlPoints, setShowControlPoints] = useState(true);
   
-  // Update jitter reduction when mode changes (currently always null since metric calculation is disabled)
-  useEffect(() => {
-    // Jitter reduction is a PRO feature - calculation is currently disabled
-    setJitterReduction(null);
-  }, [mode, smoothness]);
+  // Jitter reduction is a PRO feature - always null in free tier
+  const jitterReduction = null;
   
   const originalPreviewRef = useRef<HTMLDivElement>(null);
   const smoothPreviewRef = useRef<HTMLDivElement>(null);

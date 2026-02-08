@@ -101,7 +101,7 @@ export function alignPathsToPath(
 
   for (let i = 0; i < repeatCount; i++) {
     // Calculate position along target path (normalized 0-1)
-    let t = repeatCount === 1 ? 0 : i / (repeatCount - 1);
+    const t = repeatCount === 1 ? 0 : i / (repeatCount - 1);
     
     // The base position is determined by range and distribution
     let distOffset = pathRangeStart + t * (pathRangeEnd - pathRangeStart) + (alignment.offset || 0);

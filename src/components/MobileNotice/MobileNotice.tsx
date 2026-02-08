@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Smartphone, X } from 'lucide-react';
 
 export const MobileNotice: React.FC = () => {
-  const [dismissed, setDismissed] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Use lazy initialization to avoid setState in effect
+  const [dismissed, setDismissed] = useState(() => {
+    return localStorage.getItem('mobileNoticeDismissed') === 'true';
+  });
+  const [isMobile, setIsMobile] = useState(() => {
+    return window.innerWidth < 768;
+  });
 
   useEffect(() => {
-    // Check if user previously dismissed
-    const wasDismissed = localStorage.getItem('mobileNoticeDismissed') === 'true';
-    setDismissed(wasDismissed);
-
-    // Detect mobile
+    // Only set up resize listener
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
     
-    checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);

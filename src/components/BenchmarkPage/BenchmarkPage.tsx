@@ -107,9 +107,13 @@ const testCases: TestCase[] = [
 
 export const BenchmarkPage: React.FC = () => {
   const [tolerance, setTolerance] = useState(0.1); // Percentage of bounding box diagonal
-  const [results, setResults] = useState<BenchmarkResult[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
+  const [benchmarkState, setBenchmarkState] = useState<{
+    results: BenchmarkResult[];
+    isRunning: boolean;
+  }>({ results: [], isRunning: true });
   const [showPoints, setShowPoints] = useState(false);
+
+  const { results, isRunning } = benchmarkState;
 
   const loadSVG = async (file: string): Promise<{ d: string; stroke: string; fill: string; strokeWidth: string }> => {
     const response = await fetch(file);
@@ -188,8 +192,7 @@ export const BenchmarkPage: React.FC = () => {
     return points;
   };
 
-  const runBenchmarks = async () => {
-    setIsRunning(true);
+  const runBenchmarks = async (): Promise<BenchmarkResult[]> => {
     const benchmarkResults: BenchmarkResult[] = [];
 
     for (const testCase of testCases) {
@@ -231,12 +234,21 @@ export const BenchmarkPage: React.FC = () => {
       }
     }
 
-    setResults(benchmarkResults);
-    setIsRunning(false);
+    return benchmarkResults;
   };
 
   useEffect(() => {
-    runBenchmarks();
+    let cancelled = false;
+    
+    runBenchmarks().then(benchmarkResults => {
+      if (!cancelled) {
+        setBenchmarkState({ results: benchmarkResults, isRunning: false });
+      }
+    });
+    
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const totalOriginal = results.reduce((sum, r) => sum + r.originalSegments, 0);

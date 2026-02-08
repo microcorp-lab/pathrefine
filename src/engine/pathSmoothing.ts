@@ -670,12 +670,14 @@ export function autoSmoothPaths(paths: Path[], smoothness: number = 0.3): Path[]
  */
 
 // Stub function - PRO feature not available in open source version
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 export function organicSmoothPath(path: any): any {
   console.warn('organicSmoothPath is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return path;
 }
 
 // Stub function - PRO feature not available in open source version
+// eslint-disable-next-line   @typescript-eslint/no-explicit-any
 export function autoRefinePath(path: any, _intensity?: any): any {
   console.warn('autoRefinePath is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return path;

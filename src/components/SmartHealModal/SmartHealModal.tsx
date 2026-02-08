@@ -255,13 +255,7 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
     return healPathMultiple(targetPath, pointsToRemoveIndices.size);
   }, [targetPath, pointsToRemoveIndices]);
 
-  // Sync slider with manual selection
-  useEffect(() => {
-    if (manuallySelectedPoints.size > 0) {
-      setPointsToRemove(manuallySelectedPoints.size);
-    }
-  }, [manuallySelectedPoints]);
-
+  // Toggle point selection and sync slider value directly (no useEffect)
   const togglePointSelection = useCallback((pointIndex: number) => {
     setManuallySelectedPoints(prev => {
       const newSet = new Set(prev);
@@ -270,6 +264,8 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
       } else {
         newSet.add(pointIndex);
       }
+      // Sync slider with new selection size
+      setPointsToRemove(newSet.size);
       return newSet;
     });
   }, []);
@@ -599,6 +595,20 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, autoHealApplied, handleRunAutoHeal]);
 
+  // Calculate total anchor points - MUST be before any conditional returns
+  const originalPointCount = useMemo(() => {
+    if (!originalTargetPath) return 0;
+    return countAnchorPoints(originalTargetPath);
+  }, [originalTargetPath]);
+
+  const totalAnchorPoints = useMemo(() => {
+    if (!targetPath) return 0;
+    return countAnchorPoints(targetPath);
+  }, [targetPath]);
+  
+  const currentPointCount = totalAnchorPoints;
+  const resultPointCount = currentPointCount - pointsToRemoveIndices.size;
+
   if (!targetPath) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -615,21 +625,6 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
       </div>
     );
   }
-
-  // Calculate total anchor points for ORIGINAL path (never changes)
-  const originalPointCount = useMemo(() => {
-    if (!originalTargetPath) return 0;
-    return countAnchorPoints(originalTargetPath);
-  }, [originalTargetPath]);
-
-  // Calculate total anchor points for TARGET path (current working path)
-  const totalAnchorPoints = useMemo(() => {
-    if (!targetPath) return 0;
-    return countAnchorPoints(targetPath);
-  }, [targetPath]);
-  
-  const currentPointCount = totalAnchorPoints;
-  const resultPointCount = currentPointCount - pointsToRemoveIndices.size;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

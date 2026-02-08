@@ -21,15 +21,11 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
 }) => {
   const svgDocument = useEditorStore(state => state.svgDocument);
   const setPathAlignmentSelectionMode = useEditorStore(state => state.setPathAlignmentSelectionMode);
-  const setPathAlignmentPreview = useEditorStore(state => state.setPathAlignmentPreview);
   const pathAlignmentSelectionMode = useEditorStore(state => state.pathAlignmentSelectionMode);
   
-  // Local preview state (don't use store for modal preview)
-  const [localPreview, setLocalPreview] = useState<Path[] | null>(null);
-  
-  // State for all alignment parameters
-  const [sourcePathId, setSourcePathId] = useState('');
-  const [targetPathId, setTargetPathId] = useState('');
+  // State for all alignment parameters - initialize from selectedPathIds
+  const [sourcePathId, setSourcePathId] = useState(() => selectedPathIds[0] || '');
+  const [targetPathId, setTargetPathId] = useState(() => selectedPathIds[1] || '');
   const [repeatCount, setRepeatCount] = useState(1);
   const [scale, setScale] = useState(100);
   const [pathRangeStart, setPathRangeStart] = useState(0);
@@ -55,29 +51,23 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
   const originalPreviewRef = useRef<HTMLDivElement>(null);
   const alignedPreviewRef = useRef<HTMLDivElement>(null);
 
-  // Initialize source/target from selected paths
-  useEffect(() => {
-    if (isOpen && selectedPathIds.length >= 1 && !sourcePathId) {
-      setSourcePathId(selectedPathIds[0]);
-      if (selectedPathIds.length >= 2) {
-        setTargetPathId(selectedPathIds[1]);
-      }
-    }
-  }, [isOpen, selectedPathIds, sourcePathId]);
+  // Handle close with cleanup
+  const handleClose = useCallback(() => {
+    setPathAlignmentSelectionMode('none');
+    onClose();
+  }, [onClose, setPathAlignmentSelectionMode]);
 
-  // Update preview when settings change
-  const updatePreview = useCallback(() => {
-    if (!sourcePathId || !targetPathId) {
-      setLocalPreview(null);
-      return;
+  // Calculate preview as derived state (useMemo instead of useState + useEffect)
+  const localPreview = useMemo(() => {
+    if (!isOpen || !sourcePathId || !targetPathId) {
+      return null;
     }
 
     const sourcePath = availablePaths.find(p => p.id === sourcePathId);
     const targetPath = availablePaths.find(p => p.id === targetPathId);
 
     if (!sourcePath || !targetPath) {
-      setLocalPreview(null);
-      return;
+      return null;
     }
 
     const alignment: PathAlignment = {
@@ -100,12 +90,13 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     try {
       const previewPaths = alignPathsToPath(sourcePath, targetPath, alignment);
       console.log('Preview generated:', previewPaths.length, 'paths');
-      setLocalPreview(previewPaths);
+      return previewPaths;
     } catch (error) {
       console.error('Preview generation failed:', error);
-      setLocalPreview(null);
+      return null;
     }
   }, [
+    isOpen,
     sourcePathId,
     targetPathId,
     availablePaths,
@@ -121,26 +112,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     randomScale,
     randomOffset,
     randomSeed,
-    setPathAlignmentPreview,
   ]);
-
-  // Update preview when any setting changes
-  useEffect(() => {
-    if (isOpen) {
-      updatePreview();
-    }
-  }, [
-    isOpen,
-    updatePreview,
-  ]);
-
-  // Clean up on close
-  useEffect(() => {
-    if (!isOpen) {
-      setLocalPreview(null);
-      setPathAlignmentSelectionMode('none');
-    }
-  }, [isOpen, setPathAlignmentSelectionMode]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -150,7 +122,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
         if (pathAlignmentSelectionMode !== 'none') {
           setPathAlignmentSelectionMode('none');
         } else {
-          onClose();
+          handleClose();
         }
       }
     };
@@ -232,37 +204,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     setPreviewPan({ x: 0, y: 0 });
   };
 
-  if (!isOpen) return null;
-
-  const handleApply = () => {
-    if (!sourcePathId || !targetPathId) {
-      alert('Please select both source and target paths');
-      return;
-    }
-
-    const alignment: PathAlignment = {
-      sourcePathId,
-      targetPathId,
-      offset: offset / 100,
-      perpOffset,
-      rotation,
-      preserveShape,
-      repeatCount,
-      scale: scale / 100,
-      pathRangeStart: pathRangeStart / 100,
-      pathRangeEnd: pathRangeEnd / 100,
-      randomRotation,
-      randomScale,
-      randomOffset,
-      randomSeed,
-    };
-
-    onApply(alignment);
-    setLocalPreview(null);
-    setPathAlignmentSelectionMode('none');
-    onClose();
-  };
-
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const targetPath = availablePaths.find(p => p.id === targetPathId);
 
   // Generate SVG for original preview (clickable paths)
@@ -353,6 +295,37 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
       }
     }
   }, [sourcePathId, targetPathId]);
+
+  // Early return AFTER all hooks
+  if (!isOpen) return null;
+
+  const handleApply = () => {
+    if (!sourcePathId || !targetPathId) {
+      alert('Please select both source and target paths');
+      return;
+    }
+
+    const alignment: PathAlignment = {
+      sourcePathId,
+      targetPathId,
+      offset: offset / 100,
+      perpOffset,
+      rotation,
+      preserveShape,
+      repeatCount,
+      scale: scale / 100,
+      pathRangeStart: pathRangeStart / 100,
+      pathRangeEnd: pathRangeEnd / 100,
+      randomRotation,
+      randomScale,
+      randomOffset,
+      randomSeed,
+    };
+
+    onApply(alignment);
+    setPathAlignmentSelectionMode('none');
+    handleClose();
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

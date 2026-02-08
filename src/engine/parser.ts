@@ -586,7 +586,7 @@ export function segmentsToPathData(segments: BezierSegment[]): string {
         lastX = seg.end.x;
         lastY = seg.end.y;
         break;
-      case 'C':
+      case 'C': {
         const cp1 = seg.points[0];
         const cp2 = seg.points[1];
         if (!cp1 || !cp2) {
@@ -597,7 +597,8 @@ export function segmentsToPathData(segments: BezierSegment[]): string {
         lastX = seg.end.x;
         lastY = seg.end.y;
         break;
-      case 'Q':
+      }
+      case 'Q': {
         const cp = seg.points[0];
         if (!cp) {
           command = `L ${r(seg.end.x)} ${r(seg.end.y)}`;
@@ -607,6 +608,7 @@ export function segmentsToPathData(segments: BezierSegment[]): string {
         lastX = seg.end.x;
         lastY = seg.end.y;
         break;
+      }
       case 'Z':
         command = 'Z';
         // After Z, the "current point" moves back to the start of the subpath

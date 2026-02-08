@@ -30,12 +30,12 @@ export default tseslint.config(
         varsIgnorePattern: '^_'
       }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/set-state-in-effect': 'error',
+      'react-hooks/immutability': 'error',
+      'react-hooks/rules-of-hooks': 'error',
       'react-hooks/preserve-manual-memoization': 'warn',
       'prefer-const': 'warn',
-      'no-case-declarations': 'warn',
+      'no-case-declarations': 'error',
     },
   },
 )

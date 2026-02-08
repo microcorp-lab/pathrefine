@@ -13,32 +13,25 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   
+  // Initialize state lazily when modal opens - use isOpen as reset trigger
   const [step, setStep] = useState<1 | 2>(1);
   const [filename, setFilename] = useState('icon');
   const [useAutoColorize, setUseAutoColorize] = useState(false);
   
-  // Color mappings state
-  const initialMappings = useMemo(() => {
+  // Color mappings state - updates when SVG changes
+  const currentMappings = useMemo(() => {
     if (!svgDocument) return [];
     const colors = extractUniqueColors(svgDocument);
     return generateDefaultVariables(colors);
-  }, [svgDocument]);
+  }, [svgDocument, isOpen]); // Include isOpen to recalculate when modal opens
   
-  const [colorMappings, setColorMappings] = useState<ColorMapping[]>(initialMappings);
+  const [colorMappings, setColorMappings] = useState<ColorMapping[]>(currentMappings);
   const [useCssVariables, setUseCssVariables] = useState(true);
 
-  // Reset state when modal opens
+  // Sync color mappings when they change (derived state)
   useEffect(() => {
-    if (isOpen) {
-      setStep(1);
-      setFilename('icon');
-      setUseAutoColorize(false);
-      if (svgDocument) {
-        const colors = extractUniqueColors(svgDocument);
-        setColorMappings(generateDefaultVariables(colors));
-      }
-    }
-  }, [isOpen, svgDocument]);
+    setColorMappings(currentMappings);
+  }, [currentMappings]);
 
   // Handle ESC key to close modal
   useEffect(() => {

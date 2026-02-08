@@ -29,8 +29,10 @@ export const CanvasWithCode: React.FC = () => {
   const isCodeEditingRef = useRef<boolean>(false);
   const preservedEditStateRef = useRef<{ pathId: string | null; pointIndices: number[] }>({ pathId: null, pointIndices: [] });
   
-  // Generate formatted SVG code with mappings
+  // Sync code from svgDocument changes (but not during user code editing)
   useEffect(() => {
+    if (isCodeEditingRef.current) return;
+    
     const result = generateSVGCodeWithMappings(svgDocument);
     setSvgCode(result.code);
     setCodeMappings(result.mappings);
