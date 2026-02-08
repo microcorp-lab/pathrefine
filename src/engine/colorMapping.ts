@@ -1,24 +1,22 @@
 // Stub module - Color mapping is a PRO feature not available in open source version
-import type { Path } from '../types/svg';
+import type { SVGDocument } from '../types/svg';
+import type { ColorMapping } from '../components/AutoColorizePanel';
 
-export function generateColorMapping(paths: Path[]): Map<string, any> {
-  console.warn('Color mapping is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
+export function extractUniqueColors(_document: SVGDocument): Map<string, number> {
+  console.warn('Color extraction is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return new Map();
 }
 
-export function applyColorMapping(paths: Path[], mapping: Map<string, any>): Path[] {
-  return paths;
-}
-
-export function extractUniqueColors(svgContent: string): string[] {
-  console.warn('Color extraction is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
+export function generateDefaultVariables(_colors: Map<string, number>): ColorMapping[] {
   return [];
 }
 
-export function generateDefaultVariables(colors: string[]): Record<string, string> {
-  return {};
-}
-
-export function applyColorMappings(svgContent: string, mappings: Record<string, string>): string {
-  return svgContent;
+export function applyColorMappings(
+  document: SVGDocument,
+  _colorMappings: ColorMapping[],
+  _useCssVariables: boolean,
+  _selectedPathIds: string[] = []
+): SVGDocument {
+  console.warn('Color mapping is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
+  return document;
 }

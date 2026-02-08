@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Canvas } from './Canvas';
 import { CodeEditor, type CodeEditorRef } from '../CodeEditor/CodeEditor';
 import { useEditorStore } from '../../store/editorStore';
-import { generateSVGCodeWithMappings, findPathAtLine } from '../../engine/codeMapping';
+import { generateSVGCodeWithMappings, findPathAtLine, type PointCodeMapping } from '../../engine/codeMapping';
 import { parseSVG } from '../../engine/parser';
 
 /**
@@ -24,7 +24,7 @@ export const CanvasWithCode: React.FC = () => {
   const codeEditorRef = useRef<CodeEditorRef>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [svgCode, setSvgCode] = useState('');
-  const parseTimeoutRef = useRef<number | null>(null);
+  const parseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const syncSourceRef = useRef<'canvas' | 'code' | null>(null);
   const isCodeEditingRef = useRef<boolean>(false);
   const preservedEditStateRef = useRef<{ pathId: string | null; pointIndices: number[] }>({ pathId: null, pointIndices: [] });
@@ -89,7 +89,7 @@ export const CanvasWithCode: React.FC = () => {
     
     // Highlight the command for the first selected point
     const firstPointIndex = selectedPointIndices[0];
-    const pointMapping = mapping.pointMappings.find(pm => pm.pointIndex === firstPointIndex);
+    const pointMapping = mapping.pointMappings.find((pm: PointCodeMapping) => pm.pointIndex === firstPointIndex);
     
     if (pointMapping && pointMapping.commandRange) {
       // Highlight just the specific command coordinates (character-level)

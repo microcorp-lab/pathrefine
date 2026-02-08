@@ -322,14 +322,6 @@ export function joinPoints(
   const firstCP = controlPoints[firstAnchorIdx];
   const lastCP = controlPoints[lastAnchorIdx];
   
-  // Create a new segment connecting first to last
-  const newSegment: BezierSegment = {
-    type: 'L',
-    points: [lastCP.point],
-    start: firstCP.point,
-    end: lastCP.point
-  };
-
   // Build new segments array
   const newSegments: BezierSegment[] = [];
   

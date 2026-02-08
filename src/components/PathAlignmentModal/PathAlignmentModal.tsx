@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { X, AlignVerticalDistributeCenter, Info, MousePointer2, Eye } from 'lucide-react';
+import { AlignVerticalDistributeCenter, Info } from 'lucide-react';
 import type { PathAlignment, Path } from '../../types/svg';
 import { useEditorStore } from '../../store/editorStore';
 import { alignPathsToPath } from '../../engine/alignment';
@@ -263,7 +263,6 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     onClose();
   };
 
-  const sourcePath = availablePaths.find(p => p.id === sourcePathId);
   const targetPath = availablePaths.find(p => p.id === targetPathId);
 
   // Generate SVG for original preview (clickable paths)

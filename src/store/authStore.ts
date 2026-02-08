@@ -10,7 +10,7 @@ interface AuthStore {
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>(() => ({
   user: null,
   session: null,
   isPro: false,

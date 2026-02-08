@@ -2,7 +2,6 @@ import { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { smoothPath } from '../../engine/pathSmoothing';
 import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
-import { Lock } from 'lucide-react';
 import type { Path } from '../../types/svg';
 import { ProFeaturesContext } from '../../main';
 
@@ -30,8 +29,6 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   const editingPathId = useEditorStore(state => state.editingPathId);
   const selectedPointIndices = useEditorStore(state => state.selectedPointIndices);
-  const isPro = useEditorStore(state => state.isPro);
-  const toggleUpgradeModal = useEditorStore(state => state.toggleUpgradeModal);
 
   const [mode, setMode] = useState<SmoothMode>('polish');
   const [smoothness, setSmoothness] = useState(0.5);
@@ -88,10 +85,11 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
           if (mode === 'organic') {
             const result = organicSmoothPath(path, smoothness, true, cornerAngle);
             previewDoc.paths[pathIndex] = result;
-            if (result.jitterReduction !== undefined) {
-              totalJitter += result.jitterReduction;
-              pathsProcessed++;
-            }
+            // Note: jitterReduction is a PRO feature metric
+            // if (result.jitterReduction !== undefined) {
+            //   totalJitter += result.jitterReduction;
+            //   pathsProcessed++;
+            // }
           } else {
             const smoothed = smoothPath(
               path,
@@ -139,7 +137,7 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
         let pointIndex = 0;
         const pointsForPath: string[] = [];
         
-        path.segments.forEach((seg, segIdx) => {
+        path.segments.forEach((seg, _segIdx) => {
           if (seg.type === 'M' || seg.type === 'L') {
             // Anchor point (matches Canvas styling exactly)
             const isSelectedPoint = selectedPointIndices.includes(pointIndex);
@@ -280,7 +278,7 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
         let pointIndex = 0;
         const pointsForPath: string[] = [];
         
-        path.segments.forEach((seg, segIdx) => {
+        path.segments.forEach((seg, _segIdx) => {
           if (seg.type === 'M' || seg.type === 'L') {
             // Anchor point (matches Canvas styling exactly)
             const isSelectedPoint = selectedPointIndices.includes(pointIndex);

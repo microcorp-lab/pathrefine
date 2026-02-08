@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { parsePathData, segmentsToPathData } from '../../engine/parser';
+import { parsePathData } from '../../engine/parser';
 import { simplifyPath } from '../../engine/pathMerging';
-import { PathSegment } from '../../types/svg';
 
 interface TestCase {
   name: string;

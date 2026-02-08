@@ -18,7 +18,7 @@ export interface Transform {
 }
 
 export interface BezierSegment {
-  type: 'M' | 'L' | 'C' | 'Q' | 'A' | 'Z';
+  type: 'M' | 'L' | 'C' | 'Q' | 'A' | 'Z' | 'H' | 'V' | 'S' | 'T';
   points: Point[];
   start: Point;
   end: Point;

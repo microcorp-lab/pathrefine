@@ -35,6 +35,7 @@ interface EditorActions {
   clearProject: () => void;
   setPathAlignmentPreview: (paths: Path[] | null) => void;
   setPathAlignmentSelectionMode: (mode: 'none' | 'source' | 'target') => void;
+  toggleUpgradeModal: () => void;
 }
 
 // Helper functions for localStorage
@@ -102,6 +103,8 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
   codeMappings: null,
   pathAlignmentPreview: null,
   pathAlignmentSelectionMode: 'none',
+  isPro: false, // Free tier by default
+  showUpgradeModal: false,
 
   // Actions
   setSVGDocument: (doc, skipHistory = false) => {
@@ -416,5 +419,9 @@ export const useEditorStore = create<EditorState & EditorActions>((set, get) => 
 
   setPathAlignmentSelectionMode: (mode) => {
     set({ pathAlignmentSelectionMode: mode });
+  },
+
+  toggleUpgradeModal: () => {
+    set((state) => ({ showUpgradeModal: !state.showUpgradeModal }));
   },
 }));

@@ -1,14 +1,5 @@
 import type { Path, BezierSegment, Point } from '../types/svg';
 import { distance } from './pathMath';
-import { 
-  detectCorners, 
-  getPathBoundingBoxDiagonal, 
-  fitCurveToSegment, 
-  applyG1Continuity,
-  autoHealPath,
-  simplifyPath
-} from './pathMerging';
-import fitCurve from 'fit-curve';
 
 /**
  * Converts a Path into a dense array of Points for Laplacian smoothing.
@@ -230,61 +221,6 @@ export function isPathClosed(path: Path): boolean {
   }
   
   return false;
-}
-
-/**
- * Calculate jitter score (sum of angle changes between segments)
- * Higher score = more jittery
- * 
- * IMPROVEMENT: Weight high-frequency angle changes more heavily to detect shaky hand artifacts
- * Small consecutive angle changes = jitter, large smooth curves = intentional
- */
-function calculateJitter(points: Point[]): number {
-  if (points.length < 3) return 0;
-  
-  let totalJitter = 0;
-  const angleChanges: number[] = [];
-  
-  // First pass: collect all angle changes
-  for (let i = 1; i < points.length - 1; i++) {
-    const v1 = {
-      x: points[i].x - points[i - 1].x,
-      y: points[i].y - points[i - 1].y
-    };
-    const v2 = {
-      x: points[i + 1].x - points[i].x,
-      y: points[i + 1].y - points[i].y
-    };
-    
-    const len1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);
-    const len2 = Math.sqrt(v2.x ** 2 + v2.y ** 2);
-    
-    if (len1 > 0 && len2 > 0) {
-      const dot = (v1.x * v2.x + v1.y * v2.y) / (len1 * len2);
-      const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-      angleChanges.push(angle);
-    }
-  }
-  
-  // Second pass: detect high-frequency changes (jitter signature)
-  // Jitter = small consecutive angle changes (shaky hand)
-  // Smooth = gradual angle changes or large intentional curves
-  for (let i = 0; i < angleChanges.length; i++) {
-    const angle = angleChanges[i];
-    
-    // Weight small angles more heavily (these are jitter artifacts)
-    // Large angles (>30°) are likely intentional corners
-    const threshold = Math.PI / 6; // 30 degrees
-    if (angle < threshold) {
-      // High-frequency jitter gets exponential weight
-      totalJitter += angle * (1 + angle * 5);
-    } else {
-      // Smooth curves get linear weight
-      totalJitter += angle;
-    }
-  }
-  
-  return totalJitter;
 }
 
 export function smoothPath(
@@ -740,7 +676,7 @@ export function organicSmoothPath(path: any): any {
 }
 
 // Stub function - PRO feature not available in open source version
-export function autoRefinePath(path: any, intensity?: any): any {
+export function autoRefinePath(path: any, _intensity?: any): any {
   console.warn('autoRefinePath is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return path;
 }

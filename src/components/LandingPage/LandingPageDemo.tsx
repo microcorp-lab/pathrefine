@@ -4,7 +4,7 @@ import { parseSVG, segmentsToPathData } from '../../engine/parser';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { extractAnchorPoints } from '../../engine/pathEditor';
 import { DEMO_LOGO_SVG } from '../../data/demoLogo';
-import { Path, Command } from '../../types/svg';
+import { Path } from '../../types/svg';
 import { Wand2, RefreshCw, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { ProFeaturesContext } from '../../main';
 
@@ -110,7 +110,7 @@ export const LandingPageDemo: React.FC = () => {
             <div className="relative w-full max-w-[300px] aspect-square">
                 <svg viewBox={viewBox} className="w-full h-full drop-shadow-xl overflow-visible">
                     {/* Paths */}
-                    {currentPaths.map((path, i) => (
+                    {currentPaths.map((path, _i) => (
                         <path
                             key={path.id + (isRefined ? '_refined' : '_raw')}
                             d={segmentsToPathData(path.segments)}

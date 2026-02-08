@@ -24,8 +24,7 @@ const organicSmoothPathStub: OrganicSmoothPathFn = (path) => {
 
 const autoRefinePathStub: AutoRefinePathFn = (path) => {
   console.warn('autoRefinePath is a PRO feature');
-  const pointCount = path.commands.length;
-  return { path, originalPoints: pointCount, newPoints: pointCount };
+  return path;
 };
 
 // Create ProFeatures context with stub implementations

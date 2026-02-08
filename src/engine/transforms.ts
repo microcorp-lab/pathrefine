@@ -1,5 +1,4 @@
 import type { Point, Transform } from '../types/svg';
-import { segmentsToPathData } from './parser';
 
 /**
  * Centralized SVG transform utilities
@@ -327,15 +326,13 @@ export function bakePathTransform(path: { segments: any[], transform?: { raw?: s
       ...segment,
       start: applyTransform(segment.start, transformStr),
       end: applyTransform(segment.end, transformStr),
-      points: segment.points.map(p => applyTransform(p, transformStr))
+      points: segment.points.map((p: Point) => applyTransform(p, transformStr))
     };
   });
   
   // Return new path without transform
-  const newD = segmentsToPathData(bakedSegments);
   return {
     ...path,
-    d: newD,
     segments: bakedSegments,
     transform: undefined
   };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Flame, Link2, Palette, Waves, Square, Zap, Code2, Image, Check, X, CheckCircle, Smartphone } from 'lucide-react';
+import { Activity, Flame, Link2, Palette, Waves, Square, Zap, Code2, Image, Check, X, CheckCircle } from 'lucide-react';
 import { LandingPageDemo } from './LandingPageDemo';
 
 interface LandingPageProps {

@@ -4,7 +4,6 @@ import {
   getTangentAtLength, 
   getNormalAtLength,
   rotatePoint,
-  translatePoint,
   calculatePathLength
 } from './pathMath';
 import { parsePathData, segmentsToPathData } from './parser';
@@ -221,36 +220,6 @@ export function alignPathToPath(
     // Deformation: map each point of the path to the target path curve
     return deformPathAlongPath(sourcePath, targetPath, alignment);
   }
-}
-
-/**
- * Transform path data with translation and rotation
- */
-function transformPathData(
-  pathData: string,
-  translation: Point,
-  rotation: number,
-  rotationCenter: Point
-): string {
-  const segments = parsePathData(pathData);
-  const newSegments = segments.map(segment => {
-    const transformedPoints = [segment.start, ...segment.points, segment.end].map(p => {
-      // First rotate around center
-      let transformed = rotatePoint(p, rotationCenter, rotation);
-      // Then translate
-      transformed = translatePoint(transformed, translation);
-      return transformed;
-    });
-
-    return {
-      ...segment,
-      start: transformedPoints[0],
-      points: transformedPoints.slice(1, -1),
-      end: transformedPoints[transformedPoints.length - 1],
-    };
-  });
-
-  return segmentsToPathData(newSegments);
 }
 
 /**

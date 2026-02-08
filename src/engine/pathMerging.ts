@@ -192,12 +192,6 @@ export function detectCorners(points: Point[], angleThreshold: number = 30, isCl
     const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
     
     if (len1 >= 0.01 && len2 >= 0.01) {
-      const unit1 = { x: v1.x / len1, y: v1.y / len1 };
-      const unit2 = { x: v2.x / len2, y: v2.y / len2 };
-      
-      const dot = unit1.x * unit2.x + unit1.y * unit2.y;
-      const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
-      
       // If wrap-around is NOT a corner, we might be able to skip adding index 0
       // But for safety, we keep index 0 always
     }

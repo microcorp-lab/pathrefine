@@ -11,10 +11,10 @@ import type { Path } from './svg';
 export interface ProFeatureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenAuth: () => void;
+  onOpenAuth?: () => void;
   featureName: string;
   description: string;
-  previewContent: React.ReactNode;
+  previewContent?: React.ReactNode;
 }
 
 export interface AuthModalProps {
@@ -75,8 +75,8 @@ export type OrganicSmoothPathFn = (
 
 export type AutoRefinePathFn = (
   path: Path,
-  targetQuality: number
-) => { path: Path; originalPoints: number; newPoints: number };
+  intensity?: 'strong' | 'medium' | 'light'
+) => Path & { jitterReduction?: number };
 
 // PRO Features Context Type
 export interface ProFeaturesContextType {

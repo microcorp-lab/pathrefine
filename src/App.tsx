@@ -28,7 +28,8 @@ function App() {
   const proFeatures = useContext(ProFeaturesContext);
   if (!proFeatures) throw new Error('ProFeaturesContext not found');
   const { useAuthStore } = proFeatures.hooks;
-  const initialize = useAuthStore((state) => state.initialize);
+  const authStore = useAuthStore();
+  const initialize = authStore.initialize;
 
   // Initialize auth listener on app mount
   useEffect(() => {
@@ -63,6 +64,7 @@ function EditorView() {
     UserMenu 
   } = proFeatures.components;
   const { useAuthStore } = proFeatures.hooks;
+  const authStore = useAuthStore();
   
   const svgDocument = useEditorStore((state) => state.svgDocument);
   const setSVGDocument = useEditorStore((state) => state.setSVGDocument);
@@ -93,7 +95,7 @@ function EditorView() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   
   // Auth state
-  const user = useAuthStore((state) => state.user);
+  const user = authStore.user;
 
   // Auto-load demo SVG if ?demo=logo parameter is present
   useEffect(() => {
@@ -131,8 +133,8 @@ function EditorView() {
       
       // Refresh session to get updated is_pro status (retry a few times)
       const checkProStatus = async (attempts = 0) => {
-        await useAuthStore.getState().refreshSession();
-        const isNowPro = useAuthStore.getState().isPro;
+        await authStore.refreshSession();
+        const isNowPro = authStore.isPro;
         
         if (isNowPro) {
           setShowWelcomeProModal(true);
@@ -388,7 +390,7 @@ function EditorView() {
 
   const handleManageSubscription = async () => {
     try {
-      const session = useAuthStore.getState().session;
+      const session = authStore.session;
       if (!session) return;
       
       const loadingToast = toast.loading('Opening customer portal...');

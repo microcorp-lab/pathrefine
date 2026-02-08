@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { useAuthStore } from '../../store/authStore';
 import { useEditorStore } from '../../store/editorStore';
+import { ProFeaturesContext } from '../../main';
 
 interface DropdownItem {
   label: string;
@@ -23,7 +23,11 @@ export const Dropdown: React.FC<DropdownProps> = ({ label, icon, items, variant 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const isPro = useAuthStore((state) => state.isPro);
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const { useAuthStore } = proFeatures.hooks;
+  const authStore = useAuthStore();
+  const isPro = authStore.isPro;
   const toggleUpgradeModal = useEditorStore((state) => state.toggleUpgradeModal);
 
   useEffect(() => {
@@ -66,7 +70,7 @@ export const Dropdown: React.FC<DropdownProps> = ({ label, icon, items, variant 
                   if (item.onRestrictedClick) {
                     item.onRestrictedClick();
                   } else {
-                    toggleUpgradeModal(true);
+                    toggleUpgradeModal();
                   }
                   setIsOpen(false);
                   return;

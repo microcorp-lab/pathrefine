@@ -369,7 +369,7 @@ export function parsePathData(d: string): BezierSegment[] {
       case 'T': {
         // Smooth quadratic bezier - control point is reflection of last control point
         for (let i = 0; i < coords.length; i += 2) {
-          const c = lastControlPoint
+          const c: Point = lastControlPoint
             ? { x: 2 * currentPoint.x - lastControlPoint.x, y: 2 * currentPoint.y - lastControlPoint.y }
             : currentPoint;
           const end = {
@@ -398,7 +398,6 @@ export function parsePathData(d: string): BezierSegment[] {
           const sweepFlag = coords[i + 4];
           const x = isRelative ? currentPoint.x + coords[i + 5] : coords[i + 5];
           const y = isRelative ? currentPoint.y + coords[i + 6] : coords[i + 6];
-          const end = { x, y };
 
           // Convert arc to cubic bezier curves
           const arcSegments = arcToBezier(

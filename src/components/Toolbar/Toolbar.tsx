@@ -1,7 +1,6 @@
 import React, { useCallback, useContext, useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { smoothPath } from '../../engine/pathSmoothing';
-import { healPathMultiple } from '../../engine/smartHeal';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
 import { joinPoints } from '../../engine/pathEditor';
@@ -14,34 +13,9 @@ import { PathAlignmentModal } from '../PathAlignmentModal/PathAlignmentModal';
 import { RestrictedFeature } from '../RestrictedFeature';
 import { alignPathsToPath } from '../../engine/alignment';
 import { Activity, Waves, Link, Palette, Sparkles, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2 } from 'lucide-react';
-import type { Tool, PathAlignment, Path } from '../../types/svg';
+import type { PathAlignment, Path } from '../../types/svg';
 import { toast } from 'sonner';
 import { ProFeaturesContext } from '../../main';
-
-interface ToolButtonProps {
-  tool: Tool;
-  icon: string;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}
-
-const ToolButton: React.FC<ToolButtonProps> = ({ icon, label, active, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`
-      w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center
-      transition-all duration-200 text-lg sm:text-xl
-      ${active 
-        ? 'bg-accent-primary text-white shadow-lg' 
-        : 'bg-bg-secondary text-text-secondary hover:bg-border hover:text-white'
-      }
-    `}
-    title={label}
-  >
-    {icon}
-  </button>
-);
 
 export const Toolbar: React.FC = () => {
   // Get PRO features from context
@@ -49,8 +23,6 @@ export const Toolbar: React.FC = () => {
   if (!proFeatures) throw new Error('ProFeaturesContext not found');
   const { organicSmoothPath } = proFeatures.engine;
   
-  const activeTool = useEditorStore(state => state.activeTool);
-  const setTool = useEditorStore(state => state.setTool);
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
@@ -136,9 +108,6 @@ export const Toolbar: React.FC = () => {
         if (mode === 'organic') {
           const smoothed = organicSmoothPath(path, smoothness, true, cornerAngle);
           updatePath(pathId, smoothed, 'Organic smooth');
-          // Calculate stats for toast
-          const originalPoints = path.segments.reduce((acc, seg) => acc + seg.points.length + 1, 0); // approx
-          const newPoints = smoothed.segments.reduce((acc, seg) => acc + seg.points.length + 1, 0); // approx
           toast.success(`Smoothed path organically`, {
             description: `Reduced jitter with ${Math.round(smoothness * 100)}% strength`
           });
@@ -259,7 +228,7 @@ export const Toolbar: React.FC = () => {
       paths: [...svgDocument.paths, ...alignedPaths],
     };
 
-    setSVGDocument(newDoc, `Align ${alignedPaths.length} path${alignedPaths.length > 1 ? 's' : ''} to path`);
+    setSVGDocument(newDoc);
     
     toast.success('Path Alignment Applied', {
       description: `Created ${alignedPaths.length} new aligned path${alignedPaths.length > 1 ? 's' : ''}`
