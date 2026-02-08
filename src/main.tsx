@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary.tsx'
-import type { ProFeaturesContextType, OrganicSmoothPathFn, AutoRefinePathFn } from './types/proFeatures'
+import type { ProFeaturesContextType } from './types/proFeatures'
 
 // Import stub components (these return null in open source version)
 import { ProFeatureModal } from './components/ProFeatureModal/ProFeatureModal'
@@ -16,18 +16,7 @@ import { ImageExportModal } from './components/ImageExportModal'
 import { UserMenu } from './components/UserMenu'
 import { useAuthStore } from './store/authStore'
 
-// Stub PRO engine functions (return input unchanged in open source version)
-const organicSmoothPathStub: OrganicSmoothPathFn = (path) => {
-  console.warn('organicSmoothPath is a PRO feature');
-  return path;
-};
-
-const autoRefinePathStub: AutoRefinePathFn = (path) => {
-  console.warn('autoRefinePath is a PRO feature');
-  return path;
-};
-
-// Create ProFeatures context with stub implementations
+// Create ProFeatures context (PRO engine functions are undefined in open source version)
 export const ProFeaturesContext = createContext<ProFeaturesContextType>({
   components: {
     ProFeatureModal,
@@ -42,8 +31,7 @@ export const ProFeaturesContext = createContext<ProFeaturesContextType>({
     useAuthStore,
   },
   engine: {
-    organicSmoothPath: organicSmoothPathStub,
-    autoRefinePath: autoRefinePathStub,
+    // PRO features are undefined in open source version
   },
 });
 
@@ -65,8 +53,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             useAuthStore,
           },
           engine: {
-            organicSmoothPath: organicSmoothPathStub,
-            autoRefinePath: autoRefinePathStub,
+            // PRO features are undefined in open source version
           },
         }}>
           <App />

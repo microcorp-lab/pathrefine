@@ -59,6 +59,10 @@ export function EditorView() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImageExportModal, setShowImageExportModal] = useState(false);
   const [showProFeatureModal, setShowProFeatureModal] = useState(false);
+  
+  // Check if PRO features are available
+  const hasProFeatures = !!(proFeatures?.engine?.organicSmoothPath || proFeatures?.engine?.autoRefinePath);
+  
   const [proFeatureName, setProFeatureName] = useState('');
   const [proFeatureDescription, setProFeatureDescription] = useState('');
   const [proFeaturePreview, setProFeaturePreview] = useState<React.ReactNode>(null);
@@ -422,7 +426,7 @@ export function EditorView() {
                 icon: <Camera size={16} />,
                 onClick: () => setShowConverter(true)
               },
-              {
+              ...(hasProFeatures ? [{
                 label: 'Create with AI',
                 icon: <Sparkles size={16} />,
                 onClick: () => {
@@ -474,7 +478,7 @@ export function EditorView() {
                   setShowProFeatureModal(true);
                 },
                 isPro: true
-              }
+              }] : [])
             ]}
           />
           
@@ -513,7 +517,7 @@ export function EditorView() {
                     icon: <Save size={16} />,
                     onClick: handleExport
                   },
-                  {
+                  ...(hasProFeatures ? [{
                     label: 'Export Component',
                     icon: <FileCode size={16} />,
                     onClick: () => setShowExportModal(true),
@@ -542,8 +546,8 @@ export function EditorView() {
                       setShowProFeatureModal(true);
                     },
                     isPro: true
-                  },
-                  {
+                  }] : []),
+                  ...(hasProFeatures ? [{
                     label: 'Export as Image',
                     icon: <Image size={16} />,
                     onClick: () => setShowImageExportModal(true),
@@ -571,7 +575,7 @@ export function EditorView() {
                       setShowProFeatureModal(true);
                     },
                     isPro: true
-                  }
+                  }] : [])
                 ]}
               />
               

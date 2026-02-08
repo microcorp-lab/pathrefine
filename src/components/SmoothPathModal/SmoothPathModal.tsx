@@ -591,7 +591,7 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
           {/* Mode Selection */}
           <div>
             <label className="block text-sm font-medium mb-2">Smoothing Mode</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${hasOrganic ? 'grid-cols-2' : 'grid-cols-1'}`}>
               <button
                 onClick={() => setMode('polish')}
                 className={`px-4 py-2 rounded border transition-all ${
@@ -603,23 +603,19 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
                 <div className="font-medium">✨ Polish</div>
                 <div className="text-xs opacity-80">Adjust control points</div>
               </button>
-              <button
-                onClick={() => setMode('organic')}
-                disabled={!hasOrganic}
-                className={`px-4 py-2 rounded border transition-all relative ${
-                  mode === 'organic'
-                    ? 'bg-accent-primary border-accent-primary text-white'
-                    : !hasOrganic
-                    ? 'bg-bg-primary border-border text-gray-400 opacity-50 cursor-not-allowed'
-                    : 'bg-bg-primary border-border text-gray-400 hover:border-gray-500'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span className="font-medium">🌊 Organic</span>
-                  {!hasOrganic && <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 rounded">PRO</span>}
-                </div>
-                <div className="text-xs opacity-80">Laplacian smoothing</div>
-              </button>
+              {hasOrganic && (
+                <button
+                  onClick={() => setMode('organic')}
+                  className={`px-4 py-2 rounded border transition-all ${
+                    mode === 'organic'
+                      ? 'bg-accent-primary border-accent-primary text-white'
+                      : 'bg-bg-primary border-border text-gray-400 hover:border-gray-500'
+                  }`}
+                >
+                  <div className="font-medium">🌊 Organic</div>
+                  <div className="text-xs opacity-80">Laplacian smoothing</div>
+                </button>
+              )}
             </div>
           </div>
 

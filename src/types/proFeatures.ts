@@ -97,7 +97,7 @@ export interface ProFeaturesContextType {
     useAuthStore: () => AuthStore;
   };
   engine: {
-    organicSmoothPath: OrganicSmoothPathFn;
-    autoRefinePath: AutoRefinePathFn;
+    organicSmoothPath?: OrganicSmoothPathFn;
+    autoRefinePath?: AutoRefinePathFn;
   };
 }

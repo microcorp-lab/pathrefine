@@ -21,7 +21,8 @@ export const Toolbar: React.FC = () => {
   // Get PRO features from context
   const proFeatures = useContext(ProFeaturesContext);
   if (!proFeatures) throw new Error('ProFeaturesContext not found');
-  const { organicSmoothPath } = proFeatures.engine;
+  const organicSmoothPath = proFeatures.engine.organicSmoothPath;
+  const hasProFeatures = !!(proFeatures.engine.organicSmoothPath || proFeatures.engine.autoRefinePath);
   
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);
   const svgDocument = useEditorStore(state => state.svgDocument);
@@ -106,6 +107,10 @@ export const Toolbar: React.FC = () => {
       const path = svgDocument.paths.find(p => p.id === pathId);
       if (path) {
         if (mode === 'organic') {
+          if (!organicSmoothPath) {
+            toast.error('Organic smoothing is a PRO feature');
+            return;
+          }
           const smoothed = organicSmoothPath(path, smoothness, true, cornerAngle);
           updatePath(pathId, smoothed, 'Organic smooth');
           toast.success(`Smoothed path organically`, {
@@ -253,23 +258,25 @@ export const Toolbar: React.FC = () => {
           <Activity size={20} strokeWidth={1.5} />
         </button>
 
-        <RestrictedFeature
-          featureId="auto_refine"
-          name="Auto Refine"
-          description="Automatic 4-step processing"
-          mode="bypass"
-          onRestrictedClick={handleAutoRefine}
-        >
-        <button
-          onClick={handleAutoRefine}
-          disabled={!svgDocument || selectedPathIds.length === 0}
-          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-accent-primary text-white hover:bg-accent-secondary text-lg sm:text-xl transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-bg-secondary relative"
-          title="Auto Refine (Magic Fix)"
-        >
-          <Wand2 size={20} strokeWidth={1.5} />
-          <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
-        </button>
-        </RestrictedFeature>
+        {hasProFeatures && (
+          <RestrictedFeature
+            featureId="auto_refine"
+            name="Auto Refine"
+            description="Automatic 4-step processing"
+            mode="bypass"
+            onRestrictedClick={handleAutoRefine}
+          >
+          <button
+            onClick={handleAutoRefine}
+            disabled={!svgDocument || selectedPathIds.length === 0}
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-accent-primary text-white hover:bg-accent-secondary text-lg sm:text-xl transition-all duration-200 shadow-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:bg-bg-secondary relative"
+            title="Auto Refine (Magic Fix)"
+          >
+            <Wand2 size={20} strokeWidth={1.5} />
+            <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+          </button>
+          </RestrictedFeature>
+        )}
         
         <button
           onClick={handleSmoothPath}
@@ -307,23 +314,25 @@ export const Toolbar: React.FC = () => {
           <AlignVerticalDistributeCenter size={20} strokeWidth={1.5} />
         </button>
         
-        <RestrictedFeature
-          featureId="auto_colorize"
-          name="Auto Colorize"
-          description="Intelligent color mapping"
-          mode="bypass"
-          onRestrictedClick={handleAutoColorize}
-        >
-        <button
-          onClick={handleAutoColorize}
-          disabled={!svgDocument || svgDocument.paths.length === 0}
-          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed relative"
-          title="Auto-colorize (C) - Replace colors with currentColor [PRO]"
-        >
-          <Sparkles size={20} strokeWidth={1.5} />
-          <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
-        </button>
-        </RestrictedFeature>
+        {hasProFeatures && (
+          <RestrictedFeature
+            featureId="auto_colorize"
+            name="Auto Colorize"
+            description="Intelligent color mapping"
+            mode="bypass"
+            onRestrictedClick={handleAutoColorize}
+          >
+          <button
+            onClick={handleAutoColorize}
+            disabled={!svgDocument || svgDocument.paths.length === 0}
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed relative"
+            title="Auto-colorize (C) - Replace colors with currentColor [PRO]"
+          >
+            <Sparkles size={20} strokeWidth={1.5} />
+            <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+          </button>
+          </RestrictedFeature>
+        )}
         
         <button
           onClick={handlePerfectSquare}
