@@ -85,13 +85,13 @@ export type AutoRefinePathFn = (
 // PRO Features Context Type
 export interface ProFeaturesContextType {
   components: {
-    ProFeatureModal: React.FC<ProFeatureModalProps>;
-    AuthModal: React.FC<AuthModalProps>;
-    UpgradeModal: React.FC<UpgradeModalProps>;
-    WelcomeProModal: React.FC<WelcomeProModalProps>;
-    ExportModal: React.FC<ExportModalProps>;
-    ImageExportModal: React.FC<ImageExportModalProps>;
-    UserMenu: React.FC<UserMenuProps>;
+    ProFeatureModal: (props: ProFeatureModalProps) => React.ReactNode;
+    AuthModal: (props: AuthModalProps) => React.ReactNode;
+    UpgradeModal: (props: UpgradeModalProps) => React.ReactNode;
+    WelcomeProModal: (props: WelcomeProModalProps) => React.ReactNode;
+    ExportModal: (props: ExportModalProps) => React.ReactNode;
+    ImageExportModal: (props: ImageExportModalProps) => React.ReactNode;
+    UserMenu: (props: UserMenuProps) => React.ReactNode;
   };
   hooks: {
     useAuthStore: () => AuthStore;
