@@ -44,9 +44,6 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [showControlPoints, setShowControlPoints] = useState(true);
   
-  // Jitter reduction is a PRO feature - always null in free tier
-  const jitterReduction = null;
-  
   const originalPreviewRef = useRef<HTMLDivElement>(null);
   const smoothPreviewRef = useRef<HTMLDivElement>(null);
   
