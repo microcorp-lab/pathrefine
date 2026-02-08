@@ -22,7 +22,6 @@ import { MobileNotice } from './components/MobileNotice';
 import { Dropdown } from './components/Dropdown';
 import { Toaster, toast } from 'sonner';
 import { ProFeaturesContext } from './main';
-import { Toaster, toast } from 'sonner';
 
 function App() {
   const navigate = useNavigate();
