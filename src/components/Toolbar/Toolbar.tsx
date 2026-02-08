@@ -126,7 +126,7 @@ export const Toolbar: React.FC = () => {
         }
       }
     });
-  }, [svgDocument, selectedPathIds, editingPathId, selectedPointIndices, updatePath]);
+  }, [svgDocument, selectedPathIds, editingPathId, selectedPointIndices, updatePath, organicSmoothPath]);
 
   const handleHealPath = useCallback(() => {
     if (!svgDocument || selectedPathIds.length === 0) {

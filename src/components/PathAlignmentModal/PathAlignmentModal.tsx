@@ -44,7 +44,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
   const [randomRotation, setRandomRotation] = useState(0);
   const [randomScale, setRandomScale] = useState(0);
   const [randomOffset, setRandomOffset] = useState(0);
-  const [randomSeed, setRandomSeed] = useState(Date.now());
+  const [randomSeed, setRandomSeed] = useState(() => Date.now());
 
   // View controls
   const [previewZoom, setPreviewZoom] = useState(1);

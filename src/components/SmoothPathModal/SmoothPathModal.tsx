@@ -45,6 +45,12 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [showControlPoints, setShowControlPoints] = useState(true);
   
+  // Update jitter reduction when mode changes (currently always null since metric calculation is disabled)
+  useEffect(() => {
+    // Jitter reduction is a PRO feature - calculation is currently disabled
+    setJitterReduction(null);
+  }, [mode, smoothness]);
+  
   const originalPreviewRef = useRef<HTMLDivElement>(null);
   const smoothPreviewRef = useRef<HTMLDivElement>(null);
   
@@ -73,8 +79,8 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
     
     // Only apply smoothing if smoothness > 0 or convertLinesToCurves is enabled
     if (smoothness > 0 || convertLinesToCurves) {
-      let totalJitter = 0;
-      let pathsProcessed = 0;
+      let _totalJitter = 0;
+      let _pathsProcessed = 0;
       
       // Apply smoothing to selected paths
       selectedPathIds.forEach(pathId => {
@@ -87,8 +93,8 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
             previewDoc.paths[pathIndex] = result;
             // Note: jitterReduction is a PRO feature metric
             // if (result.jitterReduction !== undefined) {
-            //   totalJitter += result.jitterReduction;
-            //   pathsProcessed++;
+            //   _totalJitter += result.jitterReduction;
+            //   _pathsProcessed++;
             // }
           } else {
             const smoothed = smoothPath(
@@ -102,13 +108,6 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
           }
         }
       });
-      
-      // Update jitter reduction metric (average across all paths)
-      if (mode === 'organic' && pathsProcessed > 0) {
-        setJitterReduction(totalJitter / pathsProcessed);
-      } else {
-        setJitterReduction(null);
-      }
     }
 
     // Generate SVG string with control points
