@@ -24,6 +24,13 @@ export interface BezierSegment {
   points: Point[];
   start: Point;
   end: Point;
+  arcParams?: {
+    rx: number;
+    ry: number;
+    xAxisRotation: number;
+    largeArcFlag: 0 | 1;
+    sweepFlag: 0 | 1;
+  };
 }
 
 export interface Path {

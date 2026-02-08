@@ -114,3 +114,17 @@ button, input, select {
   border-radius: 2px;
   padding: 0 2px;
 }
+
+/* Heatmap animations */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}

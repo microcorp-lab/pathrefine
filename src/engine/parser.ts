@@ -609,6 +609,19 @@ export function segmentsToPathData(segments: BezierSegment[]): string {
         lastY = seg.end.y;
         break;
       }
+      case 'A': {
+        // Arc command: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+        if (seg.arcParams) {
+          const { rx, ry, xAxisRotation, largeArcFlag, sweepFlag } = seg.arcParams;
+          command = `A ${r(rx)} ${r(ry)} ${r(xAxisRotation)} ${largeArcFlag} ${sweepFlag} ${r(seg.end.x)} ${r(seg.end.y)}`;
+        } else {
+          // Fallback to line if arcParams missing
+          command = `L ${r(seg.end.x)} ${r(seg.end.y)}`;
+        }
+        lastX = seg.end.x;
+        lastY = seg.end.y;
+        break;
+      }
       case 'Z':
         command = 'Z';
         // After Z, the "current point" moves back to the start of the subpath

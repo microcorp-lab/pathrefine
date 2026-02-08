@@ -110,6 +110,7 @@ export function analyzeDocument(document: SVGDocument): DocumentAnalysis {
   let totalPoints = 0;
   let totalEstimatedSize = 0;
   let complexitySum = 0;
+  let totalDensity = 0;
 
   // Analyze each path
   document.paths.forEach(path => {
@@ -117,6 +118,7 @@ export function analyzeDocument(document: SVGDocument): DocumentAnalysis {
     pathAnalyses.set(path.id, analysis);
     totalPoints += analysis.pointCount;
     totalEstimatedSize += analysis.estimatedSize;
+    totalDensity += analysis.pointDensity;
     
     // Convert complexity to numeric score (0-100, where 0 is perfect)
     const complexityScore = {
@@ -128,8 +130,21 @@ export function analyzeDocument(document: SVGDocument): DocumentAnalysis {
     complexitySum += complexityScore;
   });
 
-  // Calculate optimal file size (assume 30% reduction is achievable)
-  const optimalFileSize = Math.floor(totalEstimatedSize * 0.7);
+  // Calculate average density across all paths
+  const avgDensity = document.paths.length > 0 
+    ? totalDensity / document.paths.length 
+    : 0;
+
+  // Calculate optimal file size using data-driven multipliers from SVGO benchmarks
+  // See benchmark/BENCHMARK_RESULTS.md for details
+  // These multipliers are based on real optimization data from 21 test SVGs
+  const savingsMultiplier = 
+    avgDensity >= 5   ? 0.50 : // Disaster (density > 5): 50% savings potential
+    avgDensity >= 3   ? 0.39 : // Bloated (density 3-5): 61% savings potential  
+    avgDensity >= 1.5 ? 0.61 : // Acceptable (density 1.5-3): 39% savings potential
+    0.88;                      // Optimal (density < 1.5): 12% savings potential
+  
+  const optimalFileSize = Math.floor(totalEstimatedSize * savingsMultiplier);
   const savingsPotential = totalEstimatedSize - optimalFileSize;
 
   // Calculate average complexity

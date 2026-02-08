@@ -724,6 +724,7 @@ export const Canvas: React.FC = () => {
           // Calculate heatmap color if enabled
           let heatmapColor = null;
           let heatmapOpacity = 0;
+          let isDisaster = false;
           if (showHeatmap) {
             const analysis = analyzePath(path);
             const density = analysis.pointDensity;
@@ -741,6 +742,7 @@ export const Canvas: React.FC = () => {
             } else {
               heatmapColor = '#ef4444'; // Red - disaster
               heatmapOpacity = 0.8;
+              isDisaster = true;
             }
           }
           
@@ -799,8 +801,9 @@ export const Canvas: React.FC = () => {
                   fill={heatmapColor}
                   stroke={heatmapColor}
                   strokeWidth={(path.strokeWidth || 2) + 4}
+                  strokeDasharray={isDisaster ? '8 4' : undefined}
                   transform={path.transform?.raw}
-                  className="pointer-events-none"
+                  className={`pointer-events-none ${isDisaster ? 'animate-pulse-slow' : ''}`}
                   style={{
                     opacity: heatmapOpacity,
                     mixBlendMode: 'multiply',
@@ -1069,13 +1072,20 @@ export const Canvas: React.FC = () => {
               <span className="ml-auto font-mono text-[10px]">3-5</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ef4444' }} />
+              <div 
+                className="w-4 h-4 rounded animate-pulse-slow" 
+                style={{ 
+                  backgroundColor: '#ef4444',
+                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)'
+                }} 
+              />
               <span className="text-text-secondary">Disaster</span>
               <span className="ml-auto font-mono text-[10px]">&gt;5</span>
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-border text-[10px] text-text-secondary">
             Point density per 100 units
+            <div className="mt-1 opacity-70">Dashed paths pulse slowly</div>
           </div>
         </div>
       )}
