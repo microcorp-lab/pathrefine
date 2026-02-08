@@ -66,17 +66,21 @@ export interface AuthStore {
 }
 
 // PRO Engine Functions Types
+export interface SmoothedPathWithMetrics extends Path {
+  jitterReduction?: number;
+}
+
 export type OrganicSmoothPathFn = (
   path: Path,
   smoothness: number,
   preserveCorners: boolean,
   cornerAngleThreshold: number
-) => Path;
+) => SmoothedPathWithMetrics;
 
 export type AutoRefinePathFn = (
   path: Path,
   intensity?: 'strong' | 'medium' | 'light'
-) => Path & { jitterReduction?: number };
+) => SmoothedPathWithMetrics;
 
 // PRO Features Context Type
 export interface ProFeaturesContextType {

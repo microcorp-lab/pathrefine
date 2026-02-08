@@ -20,10 +20,10 @@ interface SmoothPathModalProps {
 }
 
 export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
-  // Get PRO features from context
+  // Get PRO features from context (optional)
   const proFeatures = useContext(ProFeaturesContext);
-  if (!proFeatures) throw new Error('ProFeaturesContext not found');
-  const { organicSmoothPath } = proFeatures.engine;
+  const organicSmoothPath = proFeatures?.engine?.organicSmoothPath;
+  const hasOrganic = typeof organicSmoothPath === 'function';
   
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
@@ -64,31 +64,33 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   });
 
   // Generate preview SVG with control points visualization
-  const previewSVG = useMemo(() => {
-    if (!originalDocument || selectedPathIds.length === 0) return null;
+  const previewData = useMemo(() => {
+    if (!originalDocument || selectedPathIds.length === 0) {
+      return { svg: null, jitterReduction: null };
+    }
 
     // Create a copy of the original document for preview
     const previewDoc = JSON.parse(JSON.stringify(originalDocument));
     
+    let totalJitter = 0;
+    let pathsProcessed = 0;
+    
     // Only apply smoothing if smoothness > 0 or convertLinesToCurves is enabled
     if (smoothness > 0 || convertLinesToCurves) {
-      const _totalJitter = 0;
-      const _pathsProcessed = 0;
-      
       // Apply smoothing to selected paths
       selectedPathIds.forEach(pathId => {
         const pathIndex = previewDoc.paths.findIndex((p: Path) => p.id === pathId);
         if (pathIndex !== -1) {
           const path = previewDoc.paths[pathIndex];
           
-          if (mode === 'organic') {
+          if (mode === 'organic' && hasOrganic && organicSmoothPath) {
             const result = organicSmoothPath(path, smoothness, true, cornerAngle);
             previewDoc.paths[pathIndex] = result;
-            // Note: jitterReduction is a PRO feature metric
-            // if (result.jitterReduction !== undefined) {
-            //   _totalJitter += result.jitterReduction;
-            //   _pathsProcessed++;
-            // }
+            // Accumulate jitter reduction metrics for PRO feature
+            if (typeof result.jitterReduction === 'number') {
+              totalJitter += result.jitterReduction;
+              pathsProcessed += 1;
+            }
           } else {
             const smoothed = smoothPath(
               path,
@@ -102,6 +104,12 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
         }
       });
     }
+    
+    // Compute jitter reduction only for Organic mode with PRO available
+    const jitterReduction =
+      mode === 'organic' && hasOrganic && pathsProcessed > 0
+        ? totalJitter / pathsProcessed
+        : null;
 
     // Generate SVG string with control points
     const pathElements: string[] = [];
@@ -237,9 +245,27 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
 ${pathElements.join('\n')}
 ${showControlPoints ? controlPointElements.join('\n') : ''}
 </svg>`;
-    console.log('Preview SVG length:', svg.length, 'First 200 chars:', svg.substring(0, 200));
-    return svg;
-  }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, mode, smoothness, convertLinesToCurves, selectedPointsOnly, preserveSmooth, cornerAngle, showControlPoints, organicSmoothPath, previewZoom]);
+
+    return { svg, jitterReduction };
+  }, [
+    originalDocument,
+    selectedPathIds,
+    editingPathId,
+    selectedPointIndices,
+    mode,
+    smoothness,
+    convertLinesToCurves,
+    selectedPointsOnly,
+    preserveSmooth,
+    cornerAngle,
+    showControlPoints,
+    organicSmoothPath,
+    hasOrganic,
+    previewZoom
+  ]);
+
+  const previewSVG = previewData.svg;
+  const jitterReduction = previewData.jitterReduction;
 
   // Generate original SVG with control points visualization
   const originalSVG = useMemo(() => {
@@ -579,14 +605,18 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
               </button>
               <button
                 onClick={() => setMode('organic')}
+                disabled={!hasOrganic}
                 className={`px-4 py-2 rounded border transition-all relative ${
                   mode === 'organic'
                     ? 'bg-accent-primary border-accent-primary text-white'
+                    : !hasOrganic
+                    ? 'bg-bg-primary border-border text-gray-400 opacity-50 cursor-not-allowed'
                     : 'bg-bg-primary border-border text-gray-400 hover:border-gray-500'
                 }`}
               >
                 <div className="flex items-center justify-center gap-2">
                   <span className="font-medium">🌊 Organic</span>
+                  {!hasOrganic && <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 rounded">PRO</span>}
                 </div>
                 <div className="text-xs opacity-80">Laplacian smoothing</div>
               </button>
