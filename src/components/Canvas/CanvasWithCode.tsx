@@ -30,10 +30,14 @@ export const CanvasWithCode: React.FC = () => {
   const preservedEditStateRef = useRef<{ pathId: string | null; pointIndices: number[] }>({ pathId: null, pointIndices: [] });
   
   // Sync code from svgDocument changes (but not during user code editing)
+  // This is a legitimate Canvas→Code sync pattern. The effect updates local state when external
+  // document changes, with a guard to prevent overwriting user edits. This is not a cascading
+  // render issue - it's one-way synchronization from source of truth to UI representation.
   useEffect(() => {
     if (isCodeEditingRef.current) return;
     
     const result = generateSVGCodeWithMappings(svgDocument);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Legitimate sync from external state to local UI state
     setSvgCode(result.code);
     setCodeMappings(result.mappings);
   }, [svgDocument, setCodeMappings]);

@@ -1,4 +1,4 @@
-import type { Point, Transform } from '../types/svg';
+import type { Point, Transform, BezierSegment } from '../types/svg';
 
 /**
  * Centralized SVG transform utilities
@@ -312,7 +312,7 @@ export function composeTransforms(transforms: string[]): string {
  * const transformed = bakePathTransform(path);
  * // All points are now in world coordinates
  */
-export function bakePathTransform(path: { segments: any[], transform?: { raw?: string } }): typeof path {
+export function bakePathTransform(path: { segments: BezierSegment[], transform?: { raw?: string } }): typeof path {
   if (!path.transform?.raw) {
     // No transform, return as-is
     return path;

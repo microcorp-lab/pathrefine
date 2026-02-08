@@ -130,7 +130,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
-  }, [isOpen, onClose, pathAlignmentSelectionMode, setPathAlignmentSelectionMode]);
+  }, [isOpen, handleClose, pathAlignmentSelectionMode, setPathAlignmentSelectionMode]);
 
   // Listen for path selection from canvas
   useEffect(() => {
@@ -237,7 +237,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     }).join('\n');
 
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${pathElements}</svg>`;
-  }, [availablePaths, sourcePathId, targetPathId, svgDocument]);
+  }, [isOpen, availablePaths, sourcePathId, targetPathId, svgDocument]);
 
   // Generate SVG for preview (aligned paths)
   const previewSVG = useMemo(() => {
@@ -271,7 +271,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     }).join('\n');
 
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${pathElements}</svg>`;
-  }, [svgDocument, localPreview, targetPath]);
+  }, [isOpen, svgDocument, localPreview, targetPath]);
 
   // Handle click on original preview to select source/target
   const handleOriginalClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

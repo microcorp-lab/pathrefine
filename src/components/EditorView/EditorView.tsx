@@ -124,7 +124,7 @@ export function EditorView() {
       
       checkProStatus();
     }
-  }, []);
+  }, [authStore]);
 
   // Listen for PRO feature requests
   useEffect(() => {

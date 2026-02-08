@@ -75,7 +75,7 @@ export const PerfectSquareModal: React.FC<PerfectSquareModalProps> = ({ isOpen, 
       .replace(/(<svg[^>]*>)/, `$1${viewBoxBorder}`);
     
     return modifiedSvg;
-  }, [svgDocument, size, customSize, padding, useCustomSize, removeWhitespace, offsetX, offsetY, showActualSize]);
+  }, [isOpen, svgDocument, size, customSize, padding, useCustomSize, removeWhitespace, offsetX, offsetY, showActualSize]);
 
   const handleApply = useCallback(() => {
     if (!svgDocument) return;

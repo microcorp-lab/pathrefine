@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { parsePathData } from '../../engine/parser';
 import { simplifyPath } from '../../engine/pathMerging';
 
@@ -20,8 +20,8 @@ interface BenchmarkResult {
   stroke: string;
   fill: string;
   strokeWidth: string;
-  originalParsedSegments: any[];
-  simplifiedParsedSegments: any[];
+  originalParsedSegments: BezierSegment[];
+  simplifiedParsedSegments: BezierSegment[];
 }
 
 const testCases: TestCase[] = [
@@ -129,7 +129,7 @@ export const BenchmarkPage: React.FC = () => {
     };
   };
 
-  const renderPoints = (segments: any[]) => {
+  const renderPoints = (segments: BezierSegment[]) => {
     if (!showPoints) return null;
     
     const points: JSX.Element[] = [];
@@ -192,7 +192,7 @@ export const BenchmarkPage: React.FC = () => {
     return points;
   };
 
-  const runBenchmarks = async (): Promise<BenchmarkResult[]> => {
+  const runBenchmarks = useCallback(async (): Promise<BenchmarkResult[]> => {
     const benchmarkResults: BenchmarkResult[] = [];
 
     for (const testCase of testCases) {
@@ -235,12 +235,12 @@ export const BenchmarkPage: React.FC = () => {
     }
 
     return benchmarkResults;
-  };
+  }, [tolerance]);
 
   useEffect(() => {
     let cancelled = false;
     
-    runBenchmarks().then(benchmarkResults => {
+    void runBenchmarks().then(benchmarkResults => {
       if (!cancelled) {
         setBenchmarkState({ results: benchmarkResults, isRunning: false });
       }
@@ -249,7 +249,7 @@ export const BenchmarkPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [runBenchmarks]);
 
   const totalOriginal = results.reduce((sum, r) => sum + r.originalSegments, 0);
   const totalSimplified = results.reduce((sum, r) => sum + r.simplifiedSegments, 0);

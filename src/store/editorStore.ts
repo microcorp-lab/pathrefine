@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { EditorState, SVGDocument, Tool, PathAlignment, ControlPoint, Path, HistoryEntry } from '../types/svg';
+import type { PathCodeMapping } from '../engine/codeMapping';
 
 interface EditorActions {
   setSVGDocument: (doc: SVGDocument, skipHistory?: boolean) => void;
@@ -31,7 +32,7 @@ interface EditorActions {
   setMarqueeEnd: (point: { x: number; y: number } | null) => void;
   toggleCodePanel: () => void;
   setCodePanelHeight: (height: number) => void;
-  setCodeMappings: (mappings: Map<string, any> | null) => void;
+  setCodeMappings: (mappings: Map<string, PathCodeMapping> | null) => void;
   clearProject: () => void;
   setPathAlignmentPreview: (paths: Path[] | null) => void;
   setPathAlignmentSelectionMode: (mode: 'none' | 'source' | 'target') => void;

@@ -23,7 +23,7 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
     if (!svgDocument) return [];
     const colors = extractUniqueColors(svgDocument);
     return generateDefaultVariables(colors);
-  }, [svgDocument, isOpen]); // Include isOpen to recalculate when modal opens
+  }, [svgDocument]);
   
   const [colorMappings, setColorMappings] = useState<ColorMapping[]>(currentMappings);
   const [useCssVariables, setUseCssVariables] = useState(true);

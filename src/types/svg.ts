@@ -1,3 +1,5 @@
+import type { PathCodeMapping } from '../engine/codeMapping';
+
 export interface Point {
   x: number;
   y: number;
@@ -107,7 +109,7 @@ export interface EditorState {
   marqueeEnd: Point | null; // Marquee selection end point
   showCodePanel: boolean; // Show/hide code editor panel
   codePanelHeight: number; // Height of code panel as fraction (0-1)
-  codeMappings: Map<string, any> | null; // Path ID -> code position mappings
+  codeMappings: Map<string, PathCodeMapping> | null; // Path ID -> code position mappings
   isPro: boolean; // Pro tier status (default false = free tier)
   showUpgradeModal: boolean; // Show/hide upgrade modal
   pathAlignmentPreview: Path[] | null; // Preview paths for path alignment

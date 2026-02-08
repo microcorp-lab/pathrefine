@@ -305,7 +305,7 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
     const containerSize = 252; // Approximate container height (90% of 280px)
     const containerScale = containerSize / viewBoxHeight;
 
-    originalDocument.paths.forEach((path: any) => {
+    originalDocument.paths.forEach((path) => {
       const isTarget = path.id === originalTargetPath.id;
       const opacity = isTarget ? 1 : 0.3;
       const strokeWidth = isTarget ? (path.strokeWidth || 1) : (path.strokeWidth || 1) * 0.5;

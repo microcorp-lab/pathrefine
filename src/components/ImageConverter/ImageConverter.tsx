@@ -177,7 +177,7 @@ export const ImageConverter: React.FC<ImageConverterProps> = ({ onClose }) => {
     } finally {
       setConverting(false);
     }
-  }, [setSVGDocument, setZoom, setPan]);
+  }, [onClose, setSVGDocument, setZoom, setPan]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

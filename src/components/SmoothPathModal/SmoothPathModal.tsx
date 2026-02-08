@@ -75,8 +75,8 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
     
     // Only apply smoothing if smoothness > 0 or convertLinesToCurves is enabled
     if (smoothness > 0 || convertLinesToCurves) {
-      let _totalJitter = 0;
-      let _pathsProcessed = 0;
+      const _totalJitter = 0;
+      const _pathsProcessed = 0;
       
       // Apply smoothing to selected paths
       selectedPathIds.forEach(pathId => {
@@ -242,7 +242,7 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
 </svg>`;
     console.log('Preview SVG length:', svg.length, 'First 200 chars:', svg.substring(0, 200));
     return svg;
-  }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, mode, smoothness, convertLinesToCurves, selectedPointsOnly, preserveSmooth, cornerAngle, showControlPoints]);
+  }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, mode, smoothness, convertLinesToCurves, selectedPointsOnly, preserveSmooth, cornerAngle, showControlPoints, organicSmoothPath, previewZoom]);
 
   // Generate original SVG with control points visualization
   const originalSVG = useMemo(() => {
@@ -383,7 +383,7 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
 </svg>`;
     console.log('Original SVG length:', svg.length, 'First 200 chars:', svg.substring(0, 200));
     return svg;
-  }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, showControlPoints]);
+  }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, showControlPoints, previewZoom]);
 
   // Handle ESC key
   useEffect(() => {

@@ -198,7 +198,7 @@ export const Canvas: React.FC = () => {
       clearSelection();
       setEditingPath(null);
     }
-  }, [activeTool, isSpacePressed, editingPathId, screenToSVG, setMarqueeStart, setMarqueeEnd, clearSelection, setEditingPath]);
+  }, [activeTool, isSpacePressed, editingPathId, setMarqueeStart, setMarqueeEnd, clearSelection, setEditingPath]);
 
   // Handle control point interactions
   const handleControlPointMouseDown = useCallback((
@@ -225,7 +225,7 @@ export const Canvas: React.FC = () => {
       setIsDraggingPoint(true);
       setDraggedPointInfo({ segmentIndex, pointIndex });
     }
-  }, [activeTool, setSelectedPoint, setIsDraggingPoint, setDraggedPointInfo]);
+  }, [activeTool, togglePointSelection, setSelectedPoint, setIsDraggingPoint, setDraggedPointInfo]);
 
   const handleControlPointDrag = useCallback((e: React.MouseEvent) => {
     if (isDraggingPoint && draggedPointInfo && editingPathId && svgDocument) {
@@ -283,7 +283,7 @@ export const Canvas: React.FC = () => {
         setMarqueeEnd(containerPos);
       }
     }
-  }, [isPanning, isDraggingPoint, marqueeStart, lastMousePos, pan, setPan, handleControlPointDrag, screenToSVG, setMarqueeEnd]);
+  }, [isPanning, isDraggingPoint, marqueeStart, lastMousePos, pan, setPan, handleControlPointDrag, setMarqueeEnd]);
 
   // Handle mouse up
   const handleMouseUp = useCallback(() => {
