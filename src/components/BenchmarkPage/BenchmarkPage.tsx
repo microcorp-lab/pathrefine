@@ -133,7 +133,7 @@ export const BenchmarkPage: React.FC = () => {
   const renderPoints = (segments: BezierSegment[]) => {
     if (!showPoints) return null;
     
-    const points: JSX.Element[] = [];
+    const points: React.ReactElement[] = [];
     segments.forEach((seg, idx) => {
       // Render end point
       points.push(
