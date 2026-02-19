@@ -45,6 +45,17 @@ export interface UserMenuProps {
   onManageSubscription: () => void;
 }
 
+export interface AutoColorizeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export interface AutoRefineModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  targetPathId?: string;
+}
+
 // Auth Store Types
 export interface AuthUser {
   id: string;
@@ -84,6 +95,7 @@ export type AutoRefinePathFn = (
 
 // PRO Features Context Type
 export interface ProFeaturesContextType {
+  isProVersion: boolean; // Flag to indicate if this build includes PRO features
   components: {
     ProFeatureModal: React.FC<ProFeatureModalProps>;
     AuthModal: React.FC<AuthModalProps>;
@@ -92,9 +104,11 @@ export interface ProFeaturesContextType {
     ExportModal: React.FC<ExportModalProps>;
     ImageExportModal: React.FC<ImageExportModalProps>;
     UserMenu: React.FC<UserMenuProps>;
+    AutoColorizeModal: React.FC<AutoColorizeModalProps>;
+    AutoRefineModal: React.FC<AutoRefineModalProps>;
   };
   hooks: {
-    useAuthStore: () => AuthStore;
+    useAuthStore: (state: unknown) => AuthStore;
   };
   engine: {
     organicSmoothPath?: OrganicSmoothPathFn;

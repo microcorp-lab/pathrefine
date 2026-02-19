@@ -19,7 +19,7 @@ import { Trash2 } from 'lucide-react';
 import { MobileNotice } from '../MobileNotice';
 import { Dropdown } from '../Dropdown';
 import { toast } from 'sonner';
-import { ProFeaturesContext } from '../../main';
+import { ProFeaturesContext } from '../../context/ProFeaturesContext';
 
 export function EditorView() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ export function EditorView() {
     UserMenu 
   } = proFeatures.components;
   const { useAuthStore } = proFeatures.hooks;
-  const authStore = useAuthStore();
+  const user = useAuthStore((state) => state.user);
   
   const svgDocument = useEditorStore((state) => state.svgDocument);
   const setSVGDocument = useEditorStore((state) => state.setSVGDocument);
@@ -60,8 +60,8 @@ export function EditorView() {
   const [showImageExportModal, setShowImageExportModal] = useState(false);
   const [showProFeatureModal, setShowProFeatureModal] = useState(false);
   
-  // Check if PRO features are available
-  const hasProFeatures = !!(proFeatures?.engine?.organicSmoothPath || proFeatures?.engine?.autoRefinePath);
+  // Check if PRO features are available in this build
+  const hasProFeatures = !!proFeatures?.isProVersion;
   
   const [proFeatureName, setProFeatureName] = useState('');
   const [proFeatureDescription, setProFeatureDescription] = useState('');
@@ -70,9 +70,6 @@ export function EditorView() {
   const [showSmoothPath, setShowSmoothPath] = useState(false);
   const [showWelcomeProModal, setShowWelcomeProModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  // Auth state
-  const user = authStore.user;
 
   // Auto-load demo SVG if ?demo=logo parameter is present
   useEffect(() => {
@@ -110,8 +107,8 @@ export function EditorView() {
       
       // Refresh session to get updated is_pro status (retry a few times)
       const checkProStatus = async (attempts = 0) => {
-        await authStore.refreshSession();
-        const isNowPro = authStore.isPro;
+        await useAuthStore.getState().refreshSession();
+        const isNowPro = useAuthStore.getState().isPro;
         
         if (isNowPro) {
           setShowWelcomeProModal(true);
@@ -128,7 +125,7 @@ export function EditorView() {
       
       checkProStatus();
     }
-  }, [authStore]);
+  }, [useAuthStore]);
 
   // Listen for PRO feature requests
   useEffect(() => {
@@ -367,7 +364,7 @@ export function EditorView() {
 
   const handleManageSubscription = async () => {
     try {
-      const session = authStore.session;
+      const session = useAuthStore.getState().session;
       if (!session) return;
       
       const loadingToast = toast.loading('Opening customer portal...');

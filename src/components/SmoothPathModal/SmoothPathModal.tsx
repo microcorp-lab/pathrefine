@@ -3,7 +3,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { smoothPath } from '../../engine/pathSmoothing';
 import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
 import type { Path } from '../../types/svg';
-import { ProFeaturesContext } from '../../main';
+import { ProFeaturesContext } from '../../context/ProFeaturesContext';
 
 type SmoothMode = 'polish' | 'organic';
 

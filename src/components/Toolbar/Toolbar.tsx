@@ -5,8 +5,6 @@ import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
 import { joinPoints } from '../../engine/pathEditor';
 import { PerfectSquareModal } from '../PerfectSquareModal/PerfectSquareModal';
-import { AutoColorizeModal } from '../AutoColorizeModal/AutoColorizeModal';
-import { AutoRefineModal } from '../AutoRefineModal/AutoRefineModal';
 import { SmoothPathModal } from '../SmoothPathModal/SmoothPathModal';
 import { MergePathsModal } from '../MergePathsModal/MergePathsModal';
 import { PathAlignmentModal } from '../PathAlignmentModal/PathAlignmentModal';
@@ -15,14 +13,16 @@ import { alignPathsToPath } from '../../engine/alignment';
 import { Activity, Waves, Link, Palette, Sparkles, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2 } from 'lucide-react';
 import type { PathAlignment, Path } from '../../types/svg';
 import { toast } from 'sonner';
-import { ProFeaturesContext } from '../../main';
+import { ProFeaturesContext } from '../../context/ProFeaturesContext';
 
 export const Toolbar: React.FC = () => {
   // Get PRO features from context
   const proFeatures = useContext(ProFeaturesContext);
   if (!proFeatures) throw new Error('ProFeaturesContext not found');
   const organicSmoothPath = proFeatures.engine.organicSmoothPath;
-  const hasProFeatures = !!(proFeatures.engine.organicSmoothPath || proFeatures.engine.autoRefinePath);
+  const hasProFeatures = !!proFeatures.isProVersion;
+  const AutoColorizeModal = proFeatures.components.AutoColorizeModal;
+  const AutoRefineModal = proFeatures.components.AutoRefineModal;
   
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);
   const svgDocument = useEditorStore(state => state.svgDocument);
