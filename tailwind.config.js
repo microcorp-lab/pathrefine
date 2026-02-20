@@ -15,6 +15,15 @@ export default {
         'text-secondary': '#a0a0a0',
         'border': '#404040',
       },
+      keyframes: {
+        'tooltip-in': {
+          '0%':   { opacity: '0', transform: 'translateX(-4px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'tooltip-in': 'tooltip-in 120ms ease-out forwards',
+      },
     },
   },
   plugins: [],
