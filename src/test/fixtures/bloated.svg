@@ -1,0 +1,23 @@
+<!-- Bloated SVG test fixture: a circle approximated with 60 line segments.
+     Real auto-tracers produce paths like this — many redundant L commands that
+     a Smart Heal or simplify pass can drastically reduce.
+     Used by file-upload-based E2E tests. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <path id="bloated-circle" fill="#334155"
+    d="M 85.0 50.0
+       L 84.8 53.7 L 84.2 57.3 L 83.3 60.8 L 82.0 64.2
+       L 80.3 67.5 L 78.3 70.6 L 76.0 73.5 L 73.4 76.0
+       L 70.6 78.3 L 67.5 80.3 L 64.2 82.0 L 60.8 83.3
+       L 57.3 84.2 L 53.7 84.8 L 50.0 85.0 L 46.3 84.8
+       L 42.7 84.2 L 39.2 83.3 L 35.8 82.0 L 32.5 80.3
+       L 29.4 78.3 L 26.5 76.0 L 24.0 73.5 L 21.7 70.6
+       L 19.7 67.5 L 18.0 64.2 L 16.7 60.8 L 15.8 57.3
+       L 15.2 53.7 L 15.0 50.0 L 15.2 46.3 L 15.8 42.7
+       L 16.7 39.2 L 18.0 35.8 L 19.7 32.5 L 21.7 29.4
+       L 24.0 26.5 L 26.5 24.0 L 29.4 21.7 L 32.5 19.7
+       L 35.8 18.0 L 39.2 16.7 L 42.7 15.8 L 46.3 15.2
+       L 50.0 15.0 L 53.7 15.2 L 57.3 15.8 L 60.8 16.7
+       L 64.2 18.0 L 67.5 19.7 L 70.6 21.7 L 73.5 24.0
+       L 76.0 26.5 L 78.3 29.4 L 80.3 32.5 L 82.0 35.8
+       L 83.3 39.2 L 84.2 42.7 L 84.8 46.3 Z"/>
+</svg>

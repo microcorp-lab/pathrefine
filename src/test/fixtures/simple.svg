@@ -1,0 +1,6 @@
+<!-- Simple clean SVG used as a predictable test fixture.
+     2 paths, no redundant points, well-formed attributes. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <path id="square" d="M 10 10 L 90 10 L 90 90 L 10 90 Z" fill="#334155"/>
+  <path id="diamond" d="M 50 10 L 90 50 L 50 90 L 10 50 Z" fill="#6366f1"/>
+</svg>
