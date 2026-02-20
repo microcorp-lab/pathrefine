@@ -16,6 +16,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      'src/test/e2e/**',   // Playwright specs — run with `npx playwright test`
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
