@@ -13,6 +13,7 @@ import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
 import { applyInverseTransform, applyTransform } from '../../engine/transforms';
 import { FolderOpen, Flame, Info, X } from 'lucide-react';
 import { DEMO_LOGO_SVG } from '../../data/demoLogo';
+import { toast } from 'sonner';
 import { parseSVG } from '../../engine/parser';
 
 export const Canvas: React.FC = () => {
@@ -116,7 +117,7 @@ export const Canvas: React.FC = () => {
         setPan(0, 0);
       } catch (error) {
         console.error('Failed to parse SVG:', error);
-        alert('Failed to load SVG file. Please check the file format.');
+        toast.error('Failed to load file — check the SVG format');
       }
     };
 
@@ -473,7 +474,7 @@ export const Canvas: React.FC = () => {
               .sort((a, b) => b - a); // Sort descending for safe removal
             
             if (segmentIndicesToRemove.length === 0) {
-              alert('Can only delete anchor points (blue dots), not control points');
+              toast.info('Select an anchor point (blue dot) to delete');
               return;
             }
             

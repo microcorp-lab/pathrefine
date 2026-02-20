@@ -108,7 +108,10 @@ export interface ProFeaturesContextType {
     AutoRefineModal: React.FC<AutoRefineModalProps>;
   };
   hooks: {
-    useAuthStore: (state: unknown) => AuthStore;
+    useAuthStore: {
+      <T>(selector: (state: AuthStore) => T): T;
+      getState(): AuthStore;
+    };
   };
   engine: {
     organicSmoothPath?: OrganicSmoothPathFn;

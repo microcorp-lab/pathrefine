@@ -652,4 +652,178 @@ describe('parser', () => {
       expect(reparsed[1].type).toBe(segments[1].type);
     });
   });
+
+  describe('SVG shape element support', () => {
+    describe('<rect> conversion', () => {
+      it('converts a plain rect to a closed rectangular path', () => {
+        const svg = `<svg width="100" height="100"><rect x="10" y="20" width="80" height="60"/></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        expect(p.id).toBe('rect-0');
+        expect(p.segments.length).toBeGreaterThan(0);
+        // Check corners using segment end-points
+        const ends = p.segments.map(s => s.end);
+        expect(ends.some(pt => Math.abs(pt.x - 10) < 0.01 && Math.abs(pt.y - 20) < 0.01)).toBe(true); // top-left after Z
+        expect(ends.some(pt => Math.abs(pt.x - 90) < 0.01 && Math.abs(pt.y - 20) < 0.01)).toBe(true); // top-right
+        expect(ends.some(pt => Math.abs(pt.x - 90) < 0.01 && Math.abs(pt.y - 80) < 0.01)).toBe(true); // bottom-right
+        expect(ends.some(pt => Math.abs(pt.x - 10) < 0.01 && Math.abs(pt.y - 80) < 0.01)).toBe(true); // bottom-left
+      });
+
+      it('converts a rounded rect (rx/ry) to a path with arc segments', () => {
+        const svg = `<svg width="100" height="100"><rect x="0" y="0" width="100" height="50" rx="10" ry="10"/></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        // Rounded rect produces more segments than a plain rect
+        expect(p.segments.length).toBeGreaterThan(5);
+        // Last segment should be Z (closed)
+        const lastNonZ = [...p.segments].reverse().find(s => s.type !== 'Z');
+        expect(lastNonZ).toBeDefined();
+      });
+
+      it('respects rx only — ry defaults to rx', () => {
+        const svg = `<svg><rect x="0" y="0" width="60" height="40" rx="8"/></svg>`;
+        const doc = parseSVG(svg);
+        expect(doc.paths[0].segments.length).toBeGreaterThan(5);
+      });
+
+      it('preserves fill, stroke and id', () => {
+        const svg = `<svg><rect id="box" x="0" y="0" width="10" height="10" fill="blue" stroke="red" stroke-width="2"/></svg>`;
+        const doc = parseSVG(svg);
+        const p = doc.paths[0];
+        expect(p.id).toBe('box');
+        expect(p.fill).toBe('blue');
+        expect(p.stroke).toBe('red');
+        expect(p.strokeWidth).toBe(2);
+      });
+    });
+
+    describe('<line> conversion', () => {
+      it('converts a line to M…L path', () => {
+        const svg = `<svg><line x1="10" y1="20" x2="90" y2="80"/></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        expect(p.id).toBe('line-0');
+        expect(p.segments[0].type).toBe('M');
+        expect(p.segments[0].start.x).toBeCloseTo(10);
+        expect(p.segments[0].start.y).toBeCloseTo(20);
+        expect(p.segments[1].type).toBe('L');
+        expect(p.segments[1].end.x).toBeCloseTo(90);
+        expect(p.segments[1].end.y).toBeCloseTo(80);
+      });
+
+      it('preserves id and stroke on line', () => {
+        const svg = `<svg><line id="myline" x1="0" y1="0" x2="50" y2="50" stroke="#333" stroke-width="3"/></svg>`;
+        const doc = parseSVG(svg);
+        expect(doc.paths[0].id).toBe('myline');
+        expect(doc.paths[0].stroke).toBe('#333');
+        expect(doc.paths[0].strokeWidth).toBe(3);
+      });
+    });
+
+    describe('<polygon> conversion', () => {
+      it('converts a triangle polygon to a closed path', () => {
+        const svg = `<svg><polygon points="50,0 100,100 0,100"/></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        expect(p.segments[0].type).toBe('M');
+        expect(p.segments[0].start).toMatchObject({ x: 50, y: 0 });
+        // Should end with Z
+        expect(p.segments[p.segments.length - 1].type).toBe('Z');
+      });
+
+      it('handles comma-separated points', () => {
+        const svg = `<svg><polygon points="0,0,100,0,100,100,0,100"/></svg>`;
+        const doc = parseSVG(svg);
+        // 4 vertices → M + 3×L + Z = 5 segments
+        expect(doc.paths[0].segments).toHaveLength(5);
+      });
+    });
+
+    describe('<polyline> conversion', () => {
+      it('converts polyline to an open path (no Z)', () => {
+        const svg = `<svg><polyline points="10,10 50,80 90,10"/></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        expect(p.id).toBe('polyline-0');
+        // Open path: last segment must NOT be Z
+        expect(p.segments[p.segments.length - 1].type).not.toBe('Z');
+      });
+    });
+
+    describe('<g> transform propagation', () => {
+      it('applies group translate to child path', () => {
+        const svg = `<svg><g transform="translate(50,100)"><path d="M 0 0 L 10 10"/></g></svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        const p = doc.paths[0];
+        expect(p.transform?.raw).toContain('translate(50,100)');
+      });
+
+      it('concatenates nested group transforms', () => {
+        const svg = `<svg>
+          <g transform="translate(10,0)">
+            <g transform="scale(2)">
+              <path d="M 0 0 L 5 5"/>
+            </g>
+          </g>
+        </svg>`;
+        const doc = parseSVG(svg);
+
+        expect(doc.paths).toHaveLength(1);
+        // Both group transforms should appear in the combined transform
+        expect(doc.paths[0].transform?.raw).toContain('translate(10,0)');
+        expect(doc.paths[0].transform?.raw).toContain('scale(2)');
+      });
+
+      it('ignores groups with no transform', () => {
+        const svg = `<svg><g><path d="M 0 0 L 10 10"/></g></svg>`;
+        const doc = parseSVG(svg);
+        expect(doc.paths[0].transform).toBeUndefined();
+      });
+
+      it('merges own path transform with ancestor group transform', () => {
+        const svg = `<svg>
+          <g transform="translate(20,30)">
+            <path d="M 0 0 L 10 10" transform="rotate(45)"/>
+          </g>
+        </svg>`;
+        const doc = parseSVG(svg);
+        const raw = doc.paths[0].transform?.raw ?? '';
+        expect(raw).toContain('translate(20,30)');
+        expect(raw).toContain('rotate(45)');
+      });
+
+      it('applies group transform to non-path shapes inside group', () => {
+        const svg = `<svg><g transform="translate(5,5)"><rect x="0" y="0" width="10" height="10"/></g></svg>`;
+        const doc = parseSVG(svg);
+        expect(doc.paths[0].transform?.raw).toContain('translate(5,5)');
+      });
+    });
+
+    describe('document order preservation', () => {
+      it('preserves z-order: paths, circles, rects in declaration order', () => {
+        const svg = `<svg>
+          <path id="first" d="M 0 0 L 1 1" fill="red"/>
+          <circle id="second" cx="50" cy="50" r="30" fill="green"/>
+          <rect id="third" x="10" y="10" width="20" height="20" fill="blue"/>
+        </svg>`;
+        const doc = parseSVG(svg);
+        expect(doc.paths).toHaveLength(3);
+        expect(doc.paths[0].id).toBe('first');
+        expect(doc.paths[1].id).toBe('second');
+        expect(doc.paths[2].id).toBe('third');
+      });
+    });
+  });
 });

@@ -3,6 +3,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { perfectSquare } from '../../engine/perfectSquare';
 import { exportSVG } from '../../engine/parser';
 import { fitToContent, bakeTransforms } from '../../engine/viewBoxFitting';
+import { toast } from 'sonner';
 
 interface PerfectSquareModalProps {
   isOpen: boolean;
@@ -85,12 +86,12 @@ export const PerfectSquareModal: React.FC<PerfectSquareModalProps> = ({ isOpen, 
       : size;
 
     if (targetSize < 8 || targetSize > 512) {
-      alert('Size must be between 8 and 512 pixels');
+      toast.error('Size must be between 8 and 512 pixels');
       return;
     }
 
     if (padding < 0 || padding > targetSize / 2) {
-      alert(`Padding must be between 0 and ${targetSize / 2} pixels`);
+      toast.error(`Padding must be between 0 and ${targetSize / 2} pixels`);
       return;
     }
 

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { exportSVG } from '../../engine/parser';
 import { Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ImageExportModalProps {
   isOpen: boolean;
@@ -123,7 +124,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({ isOpen, onCl
       img.src = url;
     } catch (error) {
       console.error('Export error:', error);
-      alert('Failed to export image. Please try again.');
+      toast.error('Export failed — try again');
       setIsExporting(false);
     }
   }, [svgDocument, format, size, customSize, filename, onClose]);

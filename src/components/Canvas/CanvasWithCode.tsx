@@ -99,7 +99,6 @@ export const CanvasWithCode: React.FC = () => {
     
     if (pointMapping && pointMapping.commandRange) {
       // Highlight just the specific command coordinates (character-level)
-      console.log(`Highlighting point ${firstPointIndex} (${pointMapping.commandType} command) at line ${pointMapping.commandRange.start.line}, columns ${pointMapping.commandRange.start.column}-${pointMapping.commandRange.end.column}`);
       codeEditorRef.current.highlightCharacterRange(
         pointMapping.commandRange.start.line,
         pointMapping.commandRange.start.column,
@@ -187,7 +186,7 @@ export const CanvasWithCode: React.FC = () => {
   // Handle selection change in code editor
   const handleSelectionChange = useCallback((startLine: number, endLine: number) => {
     // TODO: Handle multi-line selections (could select multiple paths)
-    console.log('Selection:', startLine, '-', endLine);
+    void startLine; void endLine;
   }, []);
   
   // Handle code changes with debounced parsing

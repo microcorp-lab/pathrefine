@@ -493,7 +493,7 @@ export function simplifyPath(path: Path, tolerancePercent: number, cornerAngle: 
   const diagonal = getPathBoundingBoxDiagonal(path);
   const tolerance = (tolerancePercent / 100) * diagonal;
   
-  console.log(`[Simplify] Path ID: ${path.id}, Diagonal: ${diagonal.toFixed(1)}px, Tolerance: ${tolerancePercent}% = ${tolerance.toFixed(2)}px, Segments: ${path.segments.length}`);
+  if (import.meta.env.DEV) console.log(`[Simplify] Path ID: ${path.id}, Diagonal: ${diagonal.toFixed(1)}px, Tolerance: ${tolerancePercent}% = ${tolerance.toFixed(2)}px, Segments: ${path.segments.length}`);
   
   // Step 1: Sample all segments to point clouds
   const allPoints: Point[] = [];
@@ -512,7 +512,7 @@ export function simplifyPath(path: Path, tolerancePercent: number, cornerAngle: 
     segmentBoundaries.push(allPoints.length);
   }
   
-  console.log(`  [Sample] ${path.segments.length} segments → ${allPoints.length} sampled points`);
+  if (import.meta.env.DEV) console.log(`  [Sample] ${path.segments.length} segments → ${allPoints.length} sampled points`);
   
   // Step 2: Process each subpath separately (split by M commands)
   const newSegments: BezierSegment[] = [];
@@ -551,21 +551,21 @@ export function simplifyPath(path: Path, tolerancePercent: number, cornerAngle: 
   
   // Safety check: ensure we have at least 2 segments (M + something)
   if (newSegments.length < 2 && path.segments.length >= 2) {
-    console.log(`  [Safety] Prevented over-simplification, keeping original path`);
+    if (import.meta.env.DEV) console.log(`  [Safety] Prevented over-simplification, keeping original path`);
     return path;
   }
   
   // Safety check: never return MORE segments than original (regression prevention)
   // Allow equal length since snapping/merging improves quality even with same count
   if (newSegments.length > path.segments.length) {
-    console.log(`  [Safety] Simplified has MORE segments (${newSegments.length} vs ${path.segments.length}), keeping original`);
+    if (import.meta.env.DEV) console.log(`  [Safety] Simplified has MORE segments (${newSegments.length} vs ${path.segments.length}), keeping original`);
     return path;
   }
   
   // Validate segments before returning to ensure SVG compliance
   const validatedSegments = validateSegments(newSegments);
   
-  console.log(`  [Result] ${path.segments.length} segments → ${validatedSegments.length} segments (${((1 - validatedSegments.length / path.segments.length) * 100).toFixed(1)}% reduction)`);
+  if (import.meta.env.DEV) console.log(`  [Result] ${path.segments.length} segments → ${validatedSegments.length} segments (${((1 - validatedSegments.length / path.segments.length) * 100).toFixed(1)}% reduction)`);
   
   return {
     ...path,
@@ -598,7 +598,7 @@ function processSubpath(
   // Use much smaller tolerance (0.1x) to only remove microscopic noise, preserving corners
   const simplified = simplify(points, tolerance * 0.1, true);
   
-  console.log(`  [Visvalingam-Whyatt] ${points.length} points → ${simplified.length} points`);
+  if (import.meta.env.DEV) console.log(`  [Visvalingam-Whyatt] ${points.length} points → ${simplified.length} points`);
 
   // If too few points, return as lines
   if (simplified.length < 2) return;
@@ -617,7 +617,7 @@ function processSubpath(
   // Pass isClosed flag to check wrap-around corner for closed paths
   const cornerIndices = detectCorners(simplified, cornerAngle, isClosed);
   
-  console.log(`  [Corner Detection] Found ${cornerIndices.length - 2} corners at angles > ${cornerAngle}°`);
+  if (import.meta.env.DEV) console.log(`  [Corner Detection] Found ${cornerIndices.length - 2} corners at angles > ${cornerAngle}°`);
 
   // STEP 2: Fit curves to segments between corners (or use lines if collinear)
   const curveSegments: BezierSegment[] = [];
@@ -654,7 +654,7 @@ function processSubpath(
         start: segmentPoints[0],
         end: segmentPoints[segmentPoints.length - 1]
       });
-      console.log(`  [Collinear] Using line for ${segmentPoints.length} collinear points`);
+      if (import.meta.env.DEV) console.log(`  [Collinear] Using line for ${segmentPoints.length} collinear points`);
       continue;
     }
     
@@ -696,7 +696,7 @@ function processSubpath(
     }
   }
   
-  console.log(`  [Schneider] Fitted ${curveSegments.length} segments (curves + lines at corners)`);
+  if (import.meta.env.DEV) console.log(`  [Schneider] Fitted ${curveSegments.length} segments (curves + lines at corners)`);
   
   // STEP 2.7: THE FIX FOR GAPS - Ensure closed paths are properly closed
   if (isClosed && curveSegments.length > 0) {
@@ -722,7 +722,7 @@ function processSubpath(
             end: firstSeg.end
           };
           curveSegments.pop(); // Remove the last segment
-          console.log(`  [Merge] Merged collinear first/last segments in closed path`);
+          if (import.meta.env.DEV) console.log(`  [Merge] Merged collinear first/last segments in closed path`);
         }
       }
     }
@@ -740,7 +740,7 @@ function processSubpath(
   // Pass isClosed flag to handle wrap-around smoothing for circles/loops
   applyG1Continuity(curveSegments, isClosed);
   
-  console.log(`  [G1 Continuity] Applied smooth joins${isClosed ? ' (closed path)' : ''}`);
+  if (import.meta.env.DEV) console.log(`  [G1 Continuity] Applied smooth joins${isClosed ? ' (closed path)' : ''}`);
   
   output.push(...curveSegments);
 }
@@ -1172,7 +1172,7 @@ export function autoHealPath(
   // If path is open but gap is tiny (< threshold), close it
   if (shouldAutoClose(healed, preset.tolerance, preset.autoCloseMultiplier)) {
     healed = closePath(healed);
-    console.log(`[Auto-Heal] Auto-closed path with gap < ${(preset.tolerance * preset.autoCloseMultiplier).toFixed(2)}% of diagonal`);
+    if (import.meta.env.DEV) console.log(`[Auto-Heal] Auto-closed path with gap < ${(preset.tolerance * preset.autoCloseMultiplier).toFixed(2)}% of diagonal`);
   }
   
   // Step C: Run 3-step simplification with intensity-based parameters

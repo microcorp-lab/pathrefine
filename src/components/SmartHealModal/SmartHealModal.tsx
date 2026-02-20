@@ -496,7 +496,6 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     const finalPath = mode === 'auto' ? autoHealedPath : manualHealedPath;
     if (!finalPath) return;  // Safety check
     
-    console.log('handleApply', finalPath);
     onApply(finalPath, originalTargetPath.id);
     onClose();
   };

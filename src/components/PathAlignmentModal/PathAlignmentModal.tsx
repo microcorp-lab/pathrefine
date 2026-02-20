@@ -3,6 +3,7 @@ import { AlignVerticalDistributeCenter, Info } from 'lucide-react';
 import type { PathAlignment, Path } from '../../types/svg';
 import { useEditorStore } from '../../store/editorStore';
 import { alignPathsToPath } from '../../engine/alignment';
+import { toast } from 'sonner';
 
 interface PathAlignmentModalProps {
   isOpen: boolean;
@@ -89,7 +90,6 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
 
     try {
       const previewPaths = alignPathsToPath(sourcePath, targetPath, alignment);
-      console.log('Preview generated:', previewPaths.length, 'paths');
       return previewPaths;
     } catch (error) {
       console.error('Preview generation failed:', error);
@@ -301,7 +301,7 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
 
   const handleApply = () => {
     if (!sourcePathId || !targetPathId) {
-      alert('Please select both source and target paths');
+      toast.warning('Select both a source and target path first');
       return;
     }
 

@@ -70,6 +70,14 @@ export function EditorView() {
   const [showSmoothPath, setShowSmoothPath] = useState(false);
   const [showWelcomeProModal, setShowWelcomeProModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingClear, setPendingClear] = useState(false);
+
+  // Auto-reset the clear confirmation after 3 seconds
+  useEffect(() => {
+    if (!pendingClear) return;
+    const t = setTimeout(() => setPendingClear(false), 3000);
+    return () => clearTimeout(t);
+  }, [pendingClear]);
 
   // Auto-load demo SVG if ?demo=logo parameter is present
   useEffect(() => {
@@ -164,10 +172,7 @@ export function EditorView() {
   }, [svgDocument]);
 
   const handleExport = useCallback(() => {
-    if (!svgDocument) {
-      alert('No SVG document to export');
-      return;
-    }
+    if (!svgDocument) return;
 
     // Open Export SVG Modal with optional auto-colorize step
     setShowExportSVGModal(true);
@@ -175,10 +180,7 @@ export function EditorView() {
 
   // Legacy direct download (keeping for keyboard shortcut compatibility)
   const handleDirectDownload = useCallback(() => {
-    if (!svgDocument) {
-      alert('No SVG document to export');
-      return;
-    }
+    if (!svgDocument) return;
 
     try {
       const svgString = exportSVG(svgDocument);
@@ -194,7 +196,7 @@ export function EditorView() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Failed to export SVG');
+      toast.error('Export failed — try again');
     }
   }, [svgDocument]);
 
@@ -219,7 +221,7 @@ export function EditorView() {
         setPan(0, 0);
       } catch (error) {
         console.error('Failed to parse SVG:', error);
-        alert('Failed to load SVG file. Please check the file format.');
+        toast.error('Failed to load file — check the SVG format');
       }
     };
 
@@ -581,15 +583,20 @@ export function EditorView() {
               {/* Clear Button */}
               <button
                 onClick={() => {
-                  if (confirm('Clear current project? This will remove all unsaved work.')) {
+                  if (pendingClear) {
                     clearProject();
+                    setPendingClear(false);
+                  } else {
+                    setPendingClear(true);
                   }
                 }}
-                className="px-2 sm:px-4 py-1.5 bg-red-600 hover:bg-red-700 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2"
-                title="Clear project"
+                className={`px-2 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 sm:gap-2 ${
+                  pendingClear ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-600 hover:bg-red-700'
+                }`}
+                title={pendingClear ? 'Click again to confirm — this removes all unsaved work' : 'Clear project'}
               >
                 <Trash2 size={16} strokeWidth={1.5} />
-                <span className="hidden sm:inline">Clear</span>
+                <span className="hidden sm:inline">{pendingClear ? 'Confirm?' : 'Clear'}</span>
               </button>
             </>
           )}
@@ -700,7 +707,7 @@ export function EditorView() {
       {showSmartHeal && (
         <SmartHealModal
           onClose={() => setShowSmartHeal(false)}
-          onApply={() => {console.log('onApply in App.tsx'); setShowSmartHeal(false)}}
+          onApply={() => { setShowSmartHeal(false); }}
         />
       )}
       

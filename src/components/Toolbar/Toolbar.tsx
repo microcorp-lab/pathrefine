@@ -57,7 +57,7 @@ export const Toolbar: React.FC = () => {
 
   const handleSmoothPath = useCallback(() => {
     if (!svgDocument || selectedPathIds.length === 0) {
-      alert('Please select a path to smooth');
+      toast.warning('Select a path first');
       return;
     }
 
@@ -66,28 +66,16 @@ export const Toolbar: React.FC = () => {
   }, [svgDocument, selectedPathIds]);
 
   const handleAutoColorize = useCallback(() => {
-    // Check if user is PRO -> now handled by RestrictedFeature but we keep this as fallback/logic holder
-    // If we want modal to only show if PRO:
-    // if (!isPro) return; 
-    
-    // But since we use 'bypass' mode in RestrictedFeature, clicking the button triggers this ONLY if PRO
-    // If not PRO, RestrictedFeature intercepts it.
-    
-    if (!svgDocument || selectedPathIds.length === 0) {
-      if (!svgDocument || svgDocument.paths.length === 0) {
-        alert('Please open an SVG first');
-      } else {
-        // If no paths selected, maybe select all? Or just show modal for whole doc
-        setShowAutoColorizeModal(true);
-      }
+    if (!svgDocument || svgDocument.paths.length === 0) {
+      toast.warning('Load an SVG first');
       return;
     }
     setShowAutoColorizeModal(true);
-  }, [svgDocument, selectedPathIds]);
+  }, [svgDocument]);
 
   const handleAutoRefine = useCallback(() => {
     if (!svgDocument || selectedPathIds.length === 0) {
-      alert('Please select a path to refine');
+      toast.warning('Select a path first');
       return;
     }
     setShowAutoRefineModal(true);
@@ -135,7 +123,7 @@ export const Toolbar: React.FC = () => {
 
   const handleHealPath = useCallback(() => {
     if (!svgDocument || selectedPathIds.length === 0) {
-      alert('Please select a path to heal');
+      toast.warning('Select a path first');
       return;
     }
 
@@ -169,7 +157,7 @@ export const Toolbar: React.FC = () => {
 
   const handleJoinPoints = useCallback(() => {
     if (!svgDocument || !editingPathId || selectedPointIndices.length < 2) {
-      alert('Please select at least 2 points to join');
+      toast.warning('Select at least 2 anchor points to join');
       return;
     }
 
@@ -186,7 +174,7 @@ export const Toolbar: React.FC = () => {
 
   const handleMergePaths = useCallback(() => {
     if (!svgDocument) {
-      alert('No document loaded');
+      toast.warning('Load an SVG first');
       return;
     }
 
@@ -197,7 +185,7 @@ export const Toolbar: React.FC = () => {
 
   const handlePerfectSquare = useCallback(() => {
     if (!svgDocument) {
-      alert('No document loaded');
+      toast.warning('Load an SVG first');
       return;
     }
 
@@ -206,7 +194,7 @@ export const Toolbar: React.FC = () => {
 
   const handlePathAlignment = useCallback(() => {
     if (!svgDocument || svgDocument.paths.length < 2) {
-      alert('Please load an SVG with at least 2 paths');
+      toast.warning('Need at least 2 paths to use alignment');
       return;
     }
 
@@ -220,7 +208,7 @@ export const Toolbar: React.FC = () => {
     const targetPath = svgDocument.paths.find(p => p.id === alignment.targetPathId);
 
     if (!sourcePath || !targetPath) {
-      alert('Source or target path not found');
+      toast.error('Source or target path not found');
       return;
     }
 
@@ -273,7 +261,7 @@ export const Toolbar: React.FC = () => {
             title="Auto Refine (Magic Fix)"
           >
             <Wand2 size={20} strokeWidth={1.5} />
-            <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+            <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 text-[8px] leading-none font-black tracking-wide bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md shadow-md border border-white/20">PRO</span>
           </button>
           </RestrictedFeature>
         )}
@@ -329,7 +317,7 @@ export const Toolbar: React.FC = () => {
             title="Auto-colorize (C) - Replace colors with currentColor [PRO]"
           >
             <Sparkles size={20} strokeWidth={1.5} />
-            <span className="absolute -top-1 -right-1 px-0.5 py-1 text-[6px] leading-none font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded shadow-sm">PRO</span>
+            <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 text-[8px] leading-none font-black tracking-wide bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md shadow-md border border-white/20">PRO</span>
           </button>
           </RestrictedFeature>
         )}

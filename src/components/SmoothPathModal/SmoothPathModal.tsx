@@ -55,14 +55,6 @@ export function SmoothPathModal({ onClose, onApply }: SmoothPathModalProps) {
   // Determine if we're in point-editing mode
   const hasSelectedPoints = editingPathId && selectedPointIndices.length > 0;
 
-  console.log('Modal state:', {
-    editingPathId,
-    selectedPointIndices,
-    hasSelectedPoints,
-    selectedPathIds,
-    originalDocument: !!originalDocument
-  });
-
   // Generate preview SVG with control points visualization
   const previewData = useMemo(() => {
     if (!originalDocument || selectedPathIds.length === 0) {
@@ -404,7 +396,6 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
 ${pathElements.join('\n')}
 ${showControlPoints ? controlPointElements.join('\n') : ''}
 </svg>`;
-    console.log('Original SVG length:', svg.length, 'First 200 chars:', svg.substring(0, 200));
     return svg;
   }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, showControlPoints, previewZoom]);
 

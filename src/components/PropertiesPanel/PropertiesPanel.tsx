@@ -25,6 +25,21 @@ export const PropertiesPanel: React.FC = () => {
   const [scoreExpanded, setScoreExpanded] = useState(false);
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Auto-reset pending deletes after 3 seconds
+  useEffect(() => {
+    if (!pendingDeleteAll) return;
+    const t = setTimeout(() => setPendingDeleteAll(false), 3000);
+    return () => clearTimeout(t);
+  }, [pendingDeleteAll]);
+
+  useEffect(() => {
+    if (!pendingDeleteId) return;
+    const t = setTimeout(() => setPendingDeleteId(null), 3000);
+    return () => clearTimeout(t);
+  }, [pendingDeleteId]);
 
   // Auto-collapse on mobile
   useEffect(() => {
@@ -309,16 +324,19 @@ export const PropertiesPanel: React.FC = () => {
             {selectedPaths.length > 1 && (
               <button
                 onClick={() => {
-                  if (confirm(`Delete ${selectedPaths.length} selected paths?`)) {
-                    selectedPaths.forEach(path => {
-                      deletePath(path.id, 'Delete Path');
-                    });
+                  if (pendingDeleteAll) {
+                    selectedPaths.forEach(path => deletePath(path.id, 'Delete Path'));
+                    setPendingDeleteAll(false);
+                  } else {
+                    setPendingDeleteAll(true);
                   }
                 }}
-                className="px-2 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
-                title="Delete all selected paths (⌘⌫)"
+                className={`px-2 py-1 text-xs text-white rounded transition-colors ${
+                  pendingDeleteAll ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-600 hover:bg-red-700'
+                }`}
+                title={pendingDeleteAll ? 'Click again to confirm delete' : 'Delete all selected paths'}
               >
-                <Trash2 size={14} strokeWidth={1.5} className="inline" /> Delete All
+                <Trash2 size={14} strokeWidth={1.5} className="inline" /> {pendingDeleteAll ? 'Confirm?' : 'Delete All'}
               </button>
             )}
           </div>
@@ -344,12 +362,19 @@ export const PropertiesPanel: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Delete path "${path.id}"?`)) {
+                        if (pendingDeleteId === path.id) {
                           deletePath(path.id, 'Delete Path');
+                          setPendingDeleteId(null);
+                        } else {
+                          setPendingDeleteId(path.id);
                         }
                       }}
-                      className="p-1 hover:bg-red-600 hover:text-white rounded transition-colors"
-                      title="Delete path (⌘⌫)"
+                      className={`p-1 rounded transition-colors ${
+                        pendingDeleteId === path.id
+                          ? 'bg-red-600 text-white ring-1 ring-red-400'
+                          : 'hover:bg-red-600 hover:text-white'
+                      }`}
+                      title={pendingDeleteId === path.id ? 'Click again to confirm delete' : 'Delete path'}
                     >
                       <Trash2 size={18} strokeWidth={1.5} />
                     </button>

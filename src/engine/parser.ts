@@ -18,25 +18,40 @@ export function parseSVG(svgString: string): SVGDocument {
   const height = parseFloat(svgElement.getAttribute('height') || (viewBox ? String(viewBox.height) : '400'));
 
   const paths: Path[] = [];
-  const pathElements = svgElement.querySelectorAll('path');
 
-  pathElements.forEach((pathEl, index) => {
-    const path = parsePath(pathEl, index);
-    paths.push(path);
-  });
+  // Collect all shape elements in document order (preserves z-order)
+  // querySelectorAll is depth-first so this is already correct
+  const shapeSelector = 'path, circle, ellipse, rect, line, polygon, polyline';
+  const shapeElements = svgElement.querySelectorAll(shapeSelector);
+  let index = 0;
 
-  // Convert circles to paths
-  const circleElements = svgElement.querySelectorAll('circle');
-  circleElements.forEach((circleEl, index) => {
-    const path = circleToPath(circleEl, pathElements.length + index);
-    paths.push(path);
-  });
+  shapeElements.forEach((el) => {
+    // Collect ancestor <g> transforms so nested groups are properly handled
+    const ancestorTransform = getAncestorTransform(el, svgElement);
 
-  // Convert ellipses to paths
-  const ellipseElements = svgElement.querySelectorAll('ellipse');
-  ellipseElements.forEach((ellipseEl, index) => {
-    const path = ellipseToPath(ellipseEl, pathElements.length + circleElements.length + index);
-    paths.push(path);
+    const tag = el.tagName.toLowerCase();
+    let path: Path | null = null;
+
+    if (tag === 'path') {
+      path = parsePath(el as SVGPathElement, index, ancestorTransform);
+    } else if (tag === 'circle') {
+      path = circleToPath(el as SVGCircleElement, index, ancestorTransform);
+    } else if (tag === 'ellipse') {
+      path = ellipseToPath(el as SVGEllipseElement, index, ancestorTransform);
+    } else if (tag === 'rect') {
+      path = rectToPath(el as SVGRectElement, index, ancestorTransform);
+    } else if (tag === 'line') {
+      path = lineToPath(el as SVGLineElement, index, ancestorTransform);
+    } else if (tag === 'polygon') {
+      path = polygonToPath(el as SVGPolygonElement, index, ancestorTransform, true);
+    } else if (tag === 'polyline') {
+      path = polygonToPath(el as SVGPolylineElement, index, ancestorTransform, false);
+    }
+
+    if (path) {
+      paths.push(path);
+      index++;
+    }
   });
 
   return {
@@ -44,7 +59,7 @@ export function parseSVG(svgString: string): SVGDocument {
     height,
     viewBox,
     paths,
-    groups: [], // TODO: Handle groups
+    groups: [],
   };
 }
 
@@ -64,38 +79,68 @@ function parseViewBox(svgElement: SVGSVGElement): ViewBox {
 }
 
 /**
+ * Collect the combined transform string from all ancestor <g> elements.
+ * Returns undefined if no ancestor transforms found.
+ */
+function getAncestorTransform(el: Element, svgRoot: Element): string | undefined {
+  const transforms: string[] = [];
+  let node: Element | null = el.parentElement;
+
+  while (node && node !== svgRoot) {
+    if (node.tagName.toLowerCase() === 'g') {
+      const t = node.getAttribute('transform');
+      if (t) transforms.unshift(t); // prepend so outermost comes first
+    }
+    node = node.parentElement;
+  }
+
+  return transforms.length > 0 ? transforms.join(' ') : undefined;
+}
+
+/**
+ * Merge a shape's own transform with any inherited ancestor transforms.
+ * Returns combined transform string, or undefined if neither exists.
+ */
+function mergeTransforms(own: string | null | undefined, ancestor: string | undefined): string | undefined {
+  const parts = [ancestor, own || undefined].filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(' ') : undefined;
+}
+
+/** Read common presentation attributes from any SVG element */
+function readPresentationAttrs(el: Element) {
+  return {
+    fill: el.getAttribute('fill') || undefined,
+    stroke: el.getAttribute('stroke') || undefined,
+    strokeWidth: el.getAttribute('stroke-width')
+      ? parseFloat(el.getAttribute('stroke-width')!)
+      : undefined,
+    opacity: el.getAttribute('opacity')
+      ? parseFloat(el.getAttribute('opacity')!)
+      : undefined,
+    fillOpacity: el.getAttribute('fill-opacity')
+      ? parseFloat(el.getAttribute('fill-opacity')!)
+      : undefined,
+    strokeOpacity: el.getAttribute('stroke-opacity')
+      ? parseFloat(el.getAttribute('stroke-opacity')!)
+      : undefined,
+  };
+}
+
+/**
  * Parse a single path element
  */
-function parsePath(pathElement: SVGPathElement, index: number): Path {
+function parsePath(pathElement: SVGPathElement, index: number, ancestorTransform?: string): Path {
   const id = pathElement.getAttribute('id') || `path-${index}`;
   const d = pathElement.getAttribute('d') || '';
-  const fill = pathElement.getAttribute('fill') || undefined;
-  const stroke = pathElement.getAttribute('stroke') || undefined;
-  const strokeWidth = pathElement.getAttribute('stroke-width') 
-    ? parseFloat(pathElement.getAttribute('stroke-width')!) 
-    : undefined;
-  const opacity = pathElement.getAttribute('opacity')
-    ? parseFloat(pathElement.getAttribute('opacity')!)
-    : undefined;
-  const fillOpacity = pathElement.getAttribute('fill-opacity')
-    ? parseFloat(pathElement.getAttribute('fill-opacity')!)
-    : undefined;
-  const strokeOpacity = pathElement.getAttribute('stroke-opacity')
-    ? parseFloat(pathElement.getAttribute('stroke-opacity')!)
-    : undefined;
-  const transform = pathElement.getAttribute('transform') || undefined;
+  const attrs = readPresentationAttrs(pathElement);
+  const transform = mergeTransforms(pathElement.getAttribute('transform'), ancestorTransform);
 
   const segments = parsePathData(d);
 
   return {
     id,
     d,
-    fill,
-    stroke,
-    strokeWidth,
-    opacity,
-    fillOpacity,
-    strokeOpacity,
+    ...attrs,
     transform: transform ? { raw: transform } : undefined,
     segments,
   };
@@ -105,7 +150,7 @@ function parsePath(pathElement: SVGPathElement, index: number): Path {
  * Convert circle element to path
  * Uses 4 cubic bezier curves to approximate a circle
  */
-function circleToPath(circleElement: SVGCircleElement, index: number): Path {
+function circleToPath(circleElement: SVGCircleElement, index: number, ancestorTransform?: string): Path {
   const cx = parseFloat(circleElement.getAttribute('cx') || '0');
   const cy = parseFloat(circleElement.getAttribute('cy') || '0');
   const r = parseFloat(circleElement.getAttribute('r') || '0');
@@ -125,25 +170,15 @@ function circleToPath(circleElement: SVGCircleElement, index: number): Path {
   ].join(' ');
   
   const id = circleElement.getAttribute('id') || `circle-${index}`;
-  const fill = circleElement.getAttribute('fill') || undefined;
-  const stroke = circleElement.getAttribute('stroke') || undefined;
-  const strokeWidth = circleElement.getAttribute('stroke-width') 
-    ? parseFloat(circleElement.getAttribute('stroke-width')!) 
-    : undefined;
-  const opacity = circleElement.getAttribute('opacity')
-    ? parseFloat(circleElement.getAttribute('opacity')!)
-    : undefined;
-  const transform = circleElement.getAttribute('transform') || undefined;
+  const attrs = readPresentationAttrs(circleElement);
+  const transform = mergeTransforms(circleElement.getAttribute('transform'), ancestorTransform);
 
   const segments = parsePathData(d);
 
   return {
     id,
     d,
-    fill,
-    stroke,
-    strokeWidth,
-    opacity,
+    ...attrs,
     transform: transform ? { raw: transform } : undefined,
     segments,
   };
@@ -153,7 +188,7 @@ function circleToPath(circleElement: SVGCircleElement, index: number): Path {
  * Convert ellipse element to path
  * Uses 4 cubic bezier curves to approximate an ellipse
  */
-function ellipseToPath(ellipseElement: SVGEllipseElement, index: number): Path {
+function ellipseToPath(ellipseElement: SVGEllipseElement, index: number, ancestorTransform?: string): Path {
   const cx = parseFloat(ellipseElement.getAttribute('cx') || '0');
   const cy = parseFloat(ellipseElement.getAttribute('cy') || '0');
   const rx = parseFloat(ellipseElement.getAttribute('rx') || '0');
@@ -175,27 +210,128 @@ function ellipseToPath(ellipseElement: SVGEllipseElement, index: number): Path {
   ].join(' ');
   
   const id = ellipseElement.getAttribute('id') || `ellipse-${index}`;
-  const fill = ellipseElement.getAttribute('fill') || undefined;
-  const stroke = ellipseElement.getAttribute('stroke') || undefined;
-  const strokeWidth = ellipseElement.getAttribute('stroke-width') 
-    ? parseFloat(ellipseElement.getAttribute('stroke-width')!) 
-    : undefined;
-  const opacity = ellipseElement.getAttribute('opacity')
-    ? parseFloat(ellipseElement.getAttribute('opacity')!)
-    : undefined;
-  const transform = ellipseElement.getAttribute('transform') || undefined;
+  const attrs = readPresentationAttrs(ellipseElement);
+  const transform = mergeTransforms(ellipseElement.getAttribute('transform'), ancestorTransform);
 
   const segments = parsePathData(d);
 
   return {
     id,
     d,
-    fill,
-    stroke,
-    strokeWidth,
-    opacity,
+    ...attrs,
     transform: transform ? { raw: transform } : undefined,
     segments,
+  };
+}
+
+/**
+ * Convert rect element to path.
+ * Supports optional rx/ry for rounded corners.
+ */
+function rectToPath(rectElement: SVGRectElement, index: number, ancestorTransform?: string): Path {
+  const x = parseFloat(rectElement.getAttribute('x') || '0');
+  const y = parseFloat(rectElement.getAttribute('y') || '0');
+  const w = parseFloat(rectElement.getAttribute('width') || '0');
+  const h = parseFloat(rectElement.getAttribute('height') || '0');
+
+  // rx/ry — if only one is specified, the other defaults to it
+  let rx = rectElement.getAttribute('rx') ? parseFloat(rectElement.getAttribute('rx')!) : null;
+  let ry = rectElement.getAttribute('ry') ? parseFloat(rectElement.getAttribute('ry')!) : null;
+  if (rx === null && ry === null) { rx = 0; ry = 0; }
+  else if (rx === null) { rx = ry!; }
+  else if (ry === null) { ry = rx; }
+
+  // Clamp to half dimensions per SVG spec
+  rx = Math.min(rx!, w / 2);
+  ry = Math.min(ry!, h / 2);
+
+  let d: string;
+  if (rx === 0 && ry === 0) {
+    d = `M ${x} ${y} H ${x + w} V ${y + h} H ${x} Z`;
+  } else {
+    // Rounded rectangle using arc commands – existing parsePathData will convert A→cubic
+    d = [
+      `M ${x + rx} ${y}`,
+      `H ${x + w - rx}`,
+      `A ${rx} ${ry} 0 0 1 ${x + w} ${y + ry}`,
+      `V ${y + h - ry}`,
+      `A ${rx} ${ry} 0 0 1 ${x + w - rx} ${y + h}`,
+      `H ${x + rx}`,
+      `A ${rx} ${ry} 0 0 1 ${x} ${y + h - ry}`,
+      `V ${y + ry}`,
+      `A ${rx} ${ry} 0 0 1 ${x + rx} ${y}`,
+      `Z`,
+    ].join(' ');
+  }
+
+  const id = rectElement.getAttribute('id') || `rect-${index}`;
+  const attrs = readPresentationAttrs(rectElement);
+  const transform = mergeTransforms(rectElement.getAttribute('transform'), ancestorTransform);
+
+  return {
+    id,
+    d,
+    ...attrs,
+    transform: transform ? { raw: transform } : undefined,
+    segments: parsePathData(d),
+  };
+}
+
+/**
+ * Convert line element to path: M x1 y1 L x2 y2
+ */
+function lineToPath(lineElement: SVGLineElement, index: number, ancestorTransform?: string): Path {
+  const x1 = parseFloat(lineElement.getAttribute('x1') || '0');
+  const y1 = parseFloat(lineElement.getAttribute('y1') || '0');
+  const x2 = parseFloat(lineElement.getAttribute('x2') || '0');
+  const y2 = parseFloat(lineElement.getAttribute('y2') || '0');
+
+  const d = `M ${x1} ${y1} L ${x2} ${y2}`;
+  const id = lineElement.getAttribute('id') || `line-${index}`;
+  const attrs = readPresentationAttrs(lineElement);
+  const transform = mergeTransforms(lineElement.getAttribute('transform'), ancestorTransform);
+
+  return {
+    id,
+    d,
+    ...attrs,
+    transform: transform ? { raw: transform } : undefined,
+    segments: parsePathData(d),
+  };
+}
+
+/**
+ * Convert polygon or polyline element to path.
+ * polygon: closed (appends Z), polyline: open
+ */
+function polygonToPath(
+  el: SVGPolygonElement | SVGPolylineElement,
+  index: number,
+  ancestorTransform: string | undefined,
+  closed: boolean
+): Path {
+  const pointsAttr = el.getAttribute('points') || '';
+  // Parse pairs of numbers separated by commas or whitespace
+  const nums = pointsAttr.trim().replace(/,/g, ' ').split(/\s+/).map(parseFloat).filter(n => !isNaN(n));
+
+  const parts: string[] = [];
+  for (let i = 0; i < nums.length - 1; i += 2) {
+    parts.push(i === 0 ? `M ${nums[i]} ${nums[i + 1]}` : `L ${nums[i]} ${nums[i + 1]}`);
+  }
+  if (closed && parts.length > 0) parts.push('Z');
+
+  const d = parts.join(' ');
+  const tag = el.tagName.toLowerCase();
+  const id = el.getAttribute('id') || `${tag}-${index}`;
+  const attrs = readPresentationAttrs(el);
+  const transform = mergeTransforms(el.getAttribute('transform'), ancestorTransform);
+
+  return {
+    id,
+    d,
+    ...attrs,
+    transform: transform ? { raw: transform } : undefined,
+    segments: parsePathData(d),
   };
 }
 
