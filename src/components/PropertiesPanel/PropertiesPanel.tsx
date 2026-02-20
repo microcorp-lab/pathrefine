@@ -41,6 +41,19 @@ export const PropertiesPanel: React.FC = () => {
     return () => clearTimeout(t);
   }, [pendingDeleteId]);
 
+  // Cancel both pending deletes with Escape
+  useEffect(() => {
+    if (!pendingDeleteAll && !pendingDeleteId) return;
+    const cancel = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPendingDeleteAll(false);
+        setPendingDeleteId(null);
+      }
+    };
+    window.addEventListener('keydown', cancel);
+    return () => window.removeEventListener('keydown', cancel);
+  }, [pendingDeleteAll, pendingDeleteId]);
+
   // Auto-collapse on mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -335,6 +348,7 @@ export const PropertiesPanel: React.FC = () => {
                   pendingDeleteAll ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-600 hover:bg-red-700'
                 }`}
                 title={pendingDeleteAll ? 'Click again to confirm delete' : 'Delete all selected paths'}
+                aria-label={pendingDeleteAll ? 'Confirm delete all — Escape to cancel' : 'Delete all selected paths'}
               >
                 <Trash2 size={14} strokeWidth={1.5} className="inline" /> {pendingDeleteAll ? 'Confirm?' : 'Delete All'}
               </button>
@@ -375,6 +389,7 @@ export const PropertiesPanel: React.FC = () => {
                           : 'hover:bg-red-600 hover:text-white'
                       }`}
                       title={pendingDeleteId === path.id ? 'Click again to confirm delete' : 'Delete path'}
+                      aria-label={pendingDeleteId === path.id ? `Confirm delete ${path.id} — Escape to cancel` : `Delete path ${path.id}`}
                     >
                       <Trash2 size={18} strokeWidth={1.5} />
                     </button>

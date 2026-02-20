@@ -79,6 +79,14 @@ export function EditorView() {
     return () => clearTimeout(t);
   }, [pendingClear]);
 
+  // Cancel pending clear with Escape
+  useEffect(() => {
+    if (!pendingClear) return;
+    const cancel = (e: KeyboardEvent) => { if (e.key === 'Escape') setPendingClear(false); };
+    window.addEventListener('keydown', cancel);
+    return () => window.removeEventListener('keydown', cancel);
+  }, [pendingClear]);
+
   // Auto-load demo SVG if ?demo=logo parameter is present
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -211,8 +219,15 @@ export function EditorView() {
 
       try {
         const text = await file.text();
+        const groupTransformCount = (text.match(/<g\b[^>]*\stransform=/gi) ?? []).length;
         const doc = parseSVG(text);
         setSVGDocument(doc);
+        if (groupTransformCount > 0) {
+          toast.info(
+            `${groupTransformCount} group transform${groupTransformCount !== 1 ? 's' : ''} inlined on import`,
+            { duration: 3000 }
+          );
+        }
         
         // Reset view
         const setZoom = useEditorStore.getState().setZoom;
@@ -594,6 +609,7 @@ export function EditorView() {
                   pendingClear ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-600 hover:bg-red-700'
                 }`}
                 title={pendingClear ? 'Click again to confirm — this removes all unsaved work' : 'Clear project'}
+                aria-label={pendingClear ? 'Confirm clear project — press Escape to cancel' : 'Clear project'}
               >
                 <Trash2 size={16} strokeWidth={1.5} />
                 <span className="hidden sm:inline">{pendingClear ? 'Confirm?' : 'Clear'}</span>

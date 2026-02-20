@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { FolderOpen } from 'lucide-react';
+import { toast } from 'sonner';
 import { DEMO_LOGO_SVG } from '../../data/demoLogo';
 import { parseSVG } from '../../engine/parser';
 import { useEditorStore } from '../../store/editorStore';
@@ -35,10 +36,17 @@ export const CanvasEmptyState: React.FC = () => {
       if (!file) return;
       try {
         const text = await file.text();
+        const groupTransformCount = (text.match(/<g\b[^>]*\stransform=/gi) ?? []).length;
         const doc = parseSVG(text);
         setSVGDocument(doc);
         setZoom(1);
         setPan(0, 0);
+        if (groupTransformCount > 0) {
+          toast.info(
+            `${groupTransformCount} group transform${groupTransformCount !== 1 ? 's' : ''} inlined on import`,
+            { duration: 3000 }
+          );
+        }
       } catch {
         // Handled by caller
       }
