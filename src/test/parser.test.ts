@@ -54,12 +54,18 @@ describe('parser', () => {
       expect(doc.paths[0].strokeOpacity).toBe(0.3);
     });
 
-    it('should parse path with transform', () => {
+    it('should parse path with transform — baked into coordinates', () => {
       const svg = `<svg><path d="M 0 0 L 10 10" transform="translate(50,100)"/></svg>`;
       const doc = parseSVG(svg);
       
-      expect(doc.paths[0].transform).toBeDefined();
-      expect(doc.paths[0].transform?.raw).toBe('translate(50,100)');
+      // Transform is baked into segment coordinates; no raw string remains
+      expect(doc.paths[0].transform).toBeUndefined();
+      // M 0 0 → (50, 100) after baking translate(50,100)
+      expect(doc.paths[0].segments[0].start.x).toBeCloseTo(50);
+      expect(doc.paths[0].segments[0].start.y).toBeCloseTo(100);
+      // L 10 10 → (60, 110)
+      expect(doc.paths[0].segments[1].end.x).toBeCloseTo(60);
+      expect(doc.paths[0].segments[1].end.y).toBeCloseTo(110);
     });
 
     it('should parse path with id', () => {
@@ -767,7 +773,14 @@ describe('parser', () => {
 
         expect(doc.paths).toHaveLength(1);
         const p = doc.paths[0];
-        expect(p.transform?.raw).toContain('translate(50,100)');
+        // Transform must be baked — no raw string left on the path
+        expect(p.transform).toBeUndefined();
+        // M 0 0 → translated to (50, 100)
+        expect(p.segments[0].start.x).toBeCloseTo(50);
+        expect(p.segments[0].start.y).toBeCloseTo(100);
+        // L 10 10 → translated to (60, 110)
+        expect(p.segments[1].end.x).toBeCloseTo(60);
+        expect(p.segments[1].end.y).toBeCloseTo(110);
       });
 
       it('concatenates nested group transforms', () => {
@@ -781,9 +794,16 @@ describe('parser', () => {
         const doc = parseSVG(svg);
 
         expect(doc.paths).toHaveLength(1);
-        // Both group transforms should appear in the combined transform
-        expect(doc.paths[0].transform?.raw).toContain('translate(10,0)');
-        expect(doc.paths[0].transform?.raw).toContain('scale(2)');
+        const p = doc.paths[0];
+        // Transform must be baked — no raw string left
+        expect(p.transform).toBeUndefined();
+        // Combined matrix for outer translate(10,0) + inner scale(2):
+        //   M 0,0  → (10, 0)   (scaled then translated)
+        //   L 5,5  → (20, 10)
+        expect(p.segments[0].start.x).toBeCloseTo(10);
+        expect(p.segments[0].start.y).toBeCloseTo(0);
+        expect(p.segments[1].end.x).toBeCloseTo(20);
+        expect(p.segments[1].end.y).toBeCloseTo(10);
       });
 
       it('ignores groups with no transform', () => {
@@ -799,15 +819,24 @@ describe('parser', () => {
           </g>
         </svg>`;
         const doc = parseSVG(svg);
-        const raw = doc.paths[0].transform?.raw ?? '';
-        expect(raw).toContain('translate(20,30)');
-        expect(raw).toContain('rotate(45)');
+        const p = doc.paths[0];
+        // Transform must be baked — no raw string left
+        expect(p.transform).toBeUndefined();
+        // Combined: translate(20,30) then rotate(45)
+        // For M 0,0: after translate(20,30), then rotate(45) — start stays at (20,30)
+        // because (0,0) is the origin and rotate doesn't displace (0,0)
+        expect(p.segments[0].start.x).toBeCloseTo(20);
+        expect(p.segments[0].start.y).toBeCloseTo(30);
       });
 
       it('applies group transform to non-path shapes inside group', () => {
         const svg = `<svg><g transform="translate(5,5)"><rect x="0" y="0" width="10" height="10"/></g></svg>`;
         const doc = parseSVG(svg);
-        expect(doc.paths[0].transform?.raw).toContain('translate(5,5)');
+        // Transform must be baked — no raw string left
+        expect(doc.paths[0].transform).toBeUndefined();
+        // Top-left corner moved from (0,0) to (5,5)
+        expect(doc.paths[0].segments[0].start.x).toBeCloseTo(5);
+        expect(doc.paths[0].segments[0].start.y).toBeCloseTo(5);
       });
     });
 

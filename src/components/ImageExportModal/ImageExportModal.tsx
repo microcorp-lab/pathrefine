@@ -3,6 +3,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { exportSVG } from '../../engine/parser';
 import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Modal } from '../Modal/Modal';
 
 interface ImageExportModalProps {
   isOpen: boolean;
@@ -47,18 +48,7 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({ isOpen, onCl
     }
   }, [isOpen]);
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isOpen, onClose]);
+  // Handle ESC key to close modal — delegated to base Modal component
 
   const handleExport = useCallback(async () => {
     if (!svgDocument) return;
@@ -129,26 +119,35 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({ isOpen, onCl
     }
   }, [svgDocument, format, size, customSize, filename, onClose]);
 
-  if (!isOpen || !svgDocument) return null;
+  if (!svgDocument) return null;
 
   const actualSize = size === 0 ? customSize : size;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-bg-secondary rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Export as Image</h2>
-          <button
-            onClick={onClose}
-            className="text-text-secondary hover:text-white text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
+  const footer = (
+    <>
+      <button
+        onClick={onClose}
+        disabled={isExporting}
+        className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors disabled:opacity-50"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleExport}
+        disabled={isExporting}
+        className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors disabled:opacity-50 flex items-center gap-2"
+      >
+        {isExporting ? (
+          <><Loader2 size={16} className="animate-spin" />Exporting...</>
+        ) : (
+          <><Download size={16} />Export Image</>
+        )}
+      </button>
+    </>
+  );
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Export as Image" size="md" footer={footer}>
           {/* Format Selection */}
           <div>
             <label className="block text-sm font-medium mb-3">Image Format</label>
@@ -222,45 +221,15 @@ export const ImageExportModal: React.FC<ImageExportModalProps> = ({ isOpen, onCl
             </div>
           </div>
 
-          {/* Preview Info */}
-          <div className="bg-bg-tertiary rounded p-4 space-y-2 text-sm">
-            <h3 className="font-medium">Export Preview</h3>
-            <div className="text-text-secondary space-y-1">
-              <div>• Format: {format.toUpperCase()}</div>
-              <div>• Size: {actualSize}×{actualSize}px</div>
-              <div>• Output: {filename}.{format}</div>
-            </div>
+        {/* Preview Info */}
+        <div className="bg-bg-tertiary rounded p-4 space-y-2 text-sm">
+          <h3 className="font-medium">Export Preview</h3>
+          <div className="text-text-secondary space-y-1">
+            <div>• Format: {format.toUpperCase()}</div>
+            <div>• Size: {actualSize}×{actualSize}px</div>
+            <div>• Output: {filename}.{format}</div>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="p-4 border-t border-border flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            disabled={isExporting}
-            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download size={16} />
-                Export Image
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+      </Modal>
   );
 };

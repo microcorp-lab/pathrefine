@@ -1,9 +1,9 @@
 import { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { smoothPath } from '../../engine/pathSmoothing';
-import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
 import type { Path } from '../../types/svg';
 import { ProFeaturesContext } from '../../context/ProFeaturesContext';
+import { Modal } from '../Modal/Modal';
 
 type SmoothMode = 'polish' | 'organic';
 
@@ -399,17 +399,7 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
     return svg;
   }, [originalDocument, selectedPathIds, editingPathId, selectedPointIndices, showControlPoints, previewZoom]);
 
-  // Handle ESC key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !shouldIgnoreKeyboardShortcut(e, true)) {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  // Handle ESC key — delegated to base Modal
 
   // Setup wheel event listeners with passive: false
   useEffect(() => {
@@ -470,38 +460,32 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
     setPreviewPan({ x: 0, y: 0 });
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-bg-secondary rounded-lg shadow-xl w-[800px] max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-semibold">Smooth Path</h2>
-            {jitterReduction !== null && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Jitter Reduction:</span>
-                <span className={`text-sm font-semibold px-2 py-1 rounded ${
-                  jitterReduction >= 70 ? 'bg-green-500/20 text-green-400' :
-                  jitterReduction >= 40 ? 'bg-blue-500/20 text-blue-400' :
-                  jitterReduction >= 20 ? 'bg-amber-500/20 text-amber-400' :
-                  'bg-gray-500/20 text-gray-400'
-                }`}>
-                  {jitterReduction.toFixed(1)}%
-                </span>
-              </div>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-text-secondary hover:text-white text-2xl leading-none"
-          >
-            ×
-          </button>
-        </div>
+  const jitterBadge = jitterReduction !== null ? (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-500">Jitter Reduction:</span>
+      <span className={`text-sm font-semibold px-2 py-1 rounded ${
+        jitterReduction >= 70 ? 'bg-green-500/20 text-green-400' :
+        jitterReduction >= 40 ? 'bg-blue-500/20 text-blue-400' :
+        jitterReduction >= 20 ? 'bg-amber-500/20 text-amber-400' :
+        'bg-gray-500/20 text-gray-400'
+      }`}>{jitterReduction.toFixed(1)}%</span>
+    </div>
+  ) : null;
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6">
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Smooth Path"
+      titleExtra={jitterBadge}
+      size="xl"
+      footer={
+        <>
+          <button onClick={onClose} className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors">Cancel</button>
+          <button onClick={handleApply} className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors">Apply Smoothing</button>
+        </>
+      }
+    >
             {/* Preview Section */}
         <div className="mb-4">
 
@@ -692,25 +676,6 @@ ${showControlPoints ? controlPointElements.join('\n') : ''}
             </div>
           )}
         </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="p-4 border-t border-border flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors"
-          >
-            Apply Smoothing
-          </button>
-        </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

@@ -1,4 +1,5 @@
 import type { SVGDocument, Path, ViewBox, BezierSegment, Point } from '../types/svg';
+import { bakePathTransform } from './transforms';
 
 /**
  * Parse SVG string or DOM element into our internal document structure
@@ -49,7 +50,11 @@ export function parseSVG(svgString: string): SVGDocument {
     }
 
     if (path) {
-      paths.push(path);
+      // Bake all transforms (own + inherited from ancestor <g> elements) directly
+      // into the segment coordinates, then clear the transform field.  This means
+      // the editor always works in world-space coordinates so anchor-point editing
+      // is always correct regardless of the original SVG grouping structure.
+      paths.push(bakePathTransform(path) as Path);
       index++;
     }
   });

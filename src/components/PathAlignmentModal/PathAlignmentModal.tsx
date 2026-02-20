@@ -4,6 +4,7 @@ import type { PathAlignment, Path } from '../../types/svg';
 import { useEditorStore } from '../../store/editorStore';
 import { alignPathsToPath } from '../../engine/alignment';
 import { toast } from 'sonner';
+import { Modal } from '../Modal/Modal';
 
 interface PathAlignmentModalProps {
   isOpen: boolean;
@@ -114,23 +115,14 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
     randomSeed,
   ]);
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        // If in selection mode, cancel selection mode first
-        if (pathAlignmentSelectionMode !== 'none') {
-          setPathAlignmentSelectionMode('none');
-        } else {
-          handleClose();
-        }
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+  // Handle ESC: cancel selection mode first, then close
+  const handleEscape = useCallback(() => {
+    if (pathAlignmentSelectionMode !== 'none') {
+      setPathAlignmentSelectionMode('none');
+    } else {
+      handleClose();
     }
-  }, [isOpen, handleClose, pathAlignmentSelectionMode, setPathAlignmentSelectionMode]);
+  }, [handleClose, pathAlignmentSelectionMode, setPathAlignmentSelectionMode]);
 
   // Listen for path selection from canvas
   useEffect(() => {
@@ -328,31 +320,36 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div 
-        className="bg-bg-secondary rounded-lg shadow-xl w-[900px] max-h-[90vh] flex flex-col"
-        data-source-path-id={sourcePathId}
-        data-target-path-id={targetPathId}
+    <Modal
+      isOpen={isOpen}
+      onClose={handleEscape}
+      title="Path Alignment"
+      titleIcon={<AlignVerticalDistributeCenter size={20} strokeWidth={1.5} />}
+      size="xl"
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3 bg-bg-tertiary hover:bg-bg-primary rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={!sourcePathId || !targetPathId}
+            className="flex-1 px-6 py-3 bg-accent-primary hover:bg-indigo-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <AlignVerticalDistributeCenter size={20} strokeWidth={1.5} />
+            Apply Alignment
+          </button>
+        </>
+      }
+    >
+      {/* data-* attributes for canvas path-highlight coordination */}
+      <div
+        data-source-path-id={sourcePathId || undefined}
+        data-target-path-id={targetPathId || undefined}
       >
-        {/* Header */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlignVerticalDistributeCenter className="text-accent-primary" size={24} strokeWidth={1.5} />
-              <h2 className="text-xl font-semibold">Path Alignment</h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-text-secondary hover:text-white transition-colors text-2xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
             {/* Preview Section - AT THE TOP */}
             <div className="mb-6">
               <div className="grid grid-cols-2 gap-4">
@@ -674,26 +671,6 @@ export const PathAlignmentModal: React.FC<PathAlignmentModalProps> = ({
             </div>
           </div>
         </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-border flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-6 py-3 bg-bg-tertiary hover:bg-bg-primary rounded-lg font-medium transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={!sourcePathId || !targetPathId}
-            className="flex-1 px-6 py-3 bg-accent-primary hover:bg-indigo-600 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <AlignVerticalDistributeCenter size={20} strokeWidth={1.5} />
-            Apply Alignment
-          </button>
-        </div>
-      </div>
-    </div>
+      </Modal>
   );
 };

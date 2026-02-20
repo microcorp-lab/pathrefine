@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useEditorStore } from '../../store/editorStore';
 import { perfectSquare } from '../../engine/perfectSquare';
 import { exportSVG } from '../../engine/parser';
 import { fitToContent, bakeTransforms } from '../../engine/viewBoxFitting';
 import { toast } from 'sonner';
+import { Modal } from '../Modal/Modal';
 
 interface PerfectSquareModalProps {
   isOpen: boolean;
@@ -24,19 +25,6 @@ export const PerfectSquareModal: React.FC<PerfectSquareModalProps> = ({ isOpen, 
   const [offsetX, setOffsetX] = useState<number>(0);
   const [offsetY, setOffsetY] = useState<number>(0);
   const [showActualSize, setShowActualSize] = useState(false);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [isOpen, onClose]);
 
   // Generate live preview
   const previewSvg = useMemo(() => {
@@ -108,27 +96,35 @@ export const PerfectSquareModal: React.FC<PerfectSquareModalProps> = ({ isOpen, 
     onClose();
   }, [svgDocument, size, customSize, padding, useCustomSize, removeWhitespace, offsetX, offsetY, setSVGDocument, onClose]);
 
-  if (!isOpen || !svgDocument) return null;
+  if (!svgDocument) return null;
 
   const finalSize = useCustomSize ? parseInt(customSize) || 24 : size;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-bg-secondary rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Perfect Square</h2>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Perfect Square"
+      size="xl"
+      footer={
+        <div className="flex gap-2 justify-end">
           <button
             onClick={onClose}
-            className="text-text-secondary hover:text-white text-2xl leading-none"
+            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
           >
-            ×
+            Cancel
+          </button>
+          <button
+            onClick={handleApply}
+            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors"
+          >
+            Apply Perfect Square
           </button>
         </div>
-
-        {/* Content - Two Column Layout */}
-        <div className="flex-1 overflow-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+      }
+    >
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Controls */}
             <div className="space-y-6">
               {/* Size Selection */}
@@ -312,24 +308,5 @@ export const PerfectSquareModal: React.FC<PerfectSquareModalProps> = ({ isOpen, 
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="p-4 border-t border-border flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors"
-          >
-            Apply Perfect Square
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+      </Modal>  );
 };
