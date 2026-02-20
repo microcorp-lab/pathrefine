@@ -38,19 +38,19 @@ export const PropertiesPanel: React.FC = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Calculate optimization score
-  const documentAnalysis = useMemo(() => {
-    if (!svgDocument) return null;
-    return analyzeDocument(svgDocument);
-  }, [svgDocument]);
-
-  const healthPercentage = documentAnalysis ? getHealthPercentage(documentAnalysis) : 0;
-  
-  // Generate SVG code
+  // Generate SVG code (needed first — byte length feeds the analysis)
   const svgCode = useMemo(() => {
     if (!svgDocument) return '';
     return exportSVG(svgDocument);
   }, [svgDocument]);
+
+  // Calculate optimization score — pass actual SVG byte length for accurate file size
+  const documentAnalysis = useMemo(() => {
+    if (!svgDocument) return null;
+    return analyzeDocument(svgDocument, svgCode.length);
+  }, [svgDocument, svgCode]);
+
+  const healthPercentage = documentAnalysis ? getHealthPercentage(documentAnalysis) : 0;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(svgCode);
