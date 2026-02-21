@@ -56,14 +56,14 @@ export function createSelectionSlice(set: (fn: any) => void, _get: () => any): S
     selectPath: (pathId) => set(() => ({ selectedPathIds: [pathId] })),
 
     addPathToSelection: (pathId) =>
-      set((state: any) =>
+      set((state: SelectionSlice) =>
         state.selectedPathIds.includes(pathId)
           ? state
           : { selectedPathIds: [...state.selectedPathIds, pathId] },
       ),
 
     togglePathSelection: (pathId) =>
-      set((state: any) => ({
+      set((state: SelectionSlice) => ({
         selectedPathIds: state.selectedPathIds.includes(pathId)
           ? state.selectedPathIds.filter((id: string) => id !== pathId)
           : [...state.selectedPathIds, pathId],
@@ -94,7 +94,7 @@ export function createSelectionSlice(set: (fn: any) => void, _get: () => any): S
       })),
 
     togglePointSelection: (index) =>
-      set((state: any) => {
+      set((state: SelectionSlice) => {
         const isSelected = state.selectedPointIndices.includes(index);
         const newIndices = isSelected
           ? state.selectedPointIndices.filter((i: number) => i !== index)

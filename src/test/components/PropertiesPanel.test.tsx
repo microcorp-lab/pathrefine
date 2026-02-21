@@ -9,7 +9,7 @@
  * - Escape key cancels a pending delete without deleting the path
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { PropertiesPanel } from '../../components/PropertiesPanel/PropertiesPanel';
 import { useEditorStore } from '../../store/editorStore';
 import {

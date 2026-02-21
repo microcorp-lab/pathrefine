@@ -620,7 +620,6 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     setAutoHealApplied(true);
     setManuallySelectedPoints(new Set());
     setPointsToRemove(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoRun, isBatchMode, originalTargetPath, autoHealIntensity, mode]);
 
   // Calculate success metrics

@@ -22,6 +22,6 @@ export function createProFeaturesSlice(set: (fn: any) => void, _get: () => any):
     showUpgradeModal: false,
 
     toggleUpgradeModal: () =>
-      set((state: any) => ({ showUpgradeModal: !state.showUpgradeModal })),
+      set((state: ProFeaturesSlice) => ({ showUpgradeModal: !state.showUpgradeModal })),
   };
 }

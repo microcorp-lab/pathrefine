@@ -6,6 +6,7 @@
  *          clearProject, undo, redo, canUndo, canRedo
  */
 import type { SVGDocument, Path, HistoryEntry } from '../../types/svg';
+import type { SelectionSlice } from './selectionSlice';
 import { saveToLocalStorage, initialPersistedState } from './localStorage';
 
 // ── Public interface ──────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ export function createDocumentSlice(set: (fn: any) => void, get: () => any): Doc
     },
 
     updatePath: (pathId, newPath, action = 'Edit path') => {
-      set((state: any) => {
+      set((state: DocumentSlice) => {
         if (!state.svgDocument) return state;
         const paths = state.svgDocument.paths.map((p: Path) => p.id === pathId ? newPath : p);
         const newDocument = { ...state.svgDocument, paths };
@@ -89,7 +90,7 @@ export function createDocumentSlice(set: (fn: any) => void, get: () => any): Doc
     },
 
     deletePath: (pathId, action = 'Delete path') => {
-      set((state: any) => {
+      set((state: DocumentSlice & Pick<SelectionSlice, 'selectedPathIds' | 'editingPathId'>) => {
         if (!state.svgDocument) return state;
         const paths = state.svgDocument.paths.filter((p: Path) => p.id !== pathId);
         const newDocument = { ...state.svgDocument, paths };
@@ -108,7 +109,7 @@ export function createDocumentSlice(set: (fn: any) => void, get: () => any): Doc
     },
 
     togglePathVisibility: (pathId) => {
-      set((state: any) => {
+      set((state: DocumentSlice) => {
         if (!state.svgDocument) return state;
         const paths = state.svgDocument.paths.map((p: Path) =>
           p.id === pathId ? { ...p, visible: p.visible === false ? true : false } : p,
@@ -141,7 +142,7 @@ export function createDocumentSlice(set: (fn: any) => void, get: () => any): Doc
     },
 
     undo: () => {
-      set((state: any) => {
+      set((state: DocumentSlice) => {
         if (state.historyIndex <= 0) return state;
         const newIndex = state.historyIndex - 1;
         const newDoc   = state.history[newIndex].svgDocument;
@@ -156,7 +157,7 @@ export function createDocumentSlice(set: (fn: any) => void, get: () => any): Doc
     },
 
     redo: () => {
-      set((state: any) => {
+      set((state: DocumentSlice) => {
         if (state.historyIndex >= state.history.length - 1) return state;
         const newIndex = state.historyIndex + 1;
         const newDoc   = state.history[newIndex].svgDocument;

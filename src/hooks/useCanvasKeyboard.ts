@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { SVGDocument } from '../types/svg';
+import type { SVGDocument, Path } from '../types/svg';
 import { extractControlPoints, removePoint } from '../engine/pathEditor';
 import { shouldIgnoreKeyboardShortcut } from '../utils/keyboard';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ interface UseCanvasKeyboardOptions {
   editingPathId: string | null;
   selectedPointIndices: number[];
   svgDocument: SVGDocument | null;
-  updatePath: (id: string, path: any, label?: string) => void;
+  updatePath: (id: string, path: Path, label?: string) => void;
   clearPointSelection: () => void;
 
   // Hints

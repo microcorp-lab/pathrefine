@@ -56,16 +56,16 @@ export function createUISlice(set: (fn: any) => void, _get: () => any): UISlice 
 
     setPan: (x, y) => set(() => ({ pan: { x, y } })),
 
-    toggleSnapToGrid: () => set((state: any) => ({ snapToGrid: !state.snapToGrid })),
+    toggleSnapToGrid: () => set((state: UISlice) => ({ snapToGrid: !state.snapToGrid })),
 
     setGridSize: (size) => set(() => ({ gridSize: Math.max(5, Math.min(100, size)) })),
 
-    toggleHelp: () => set((state: any) => ({ showHelp: !state.showHelp })),
+    toggleHelp: () => set((state: UISlice) => ({ showHelp: !state.showHelp })),
 
-    toggleHeatmap: () => set((state: any) => ({ showHeatmap: !state.showHeatmap })),
+    toggleHeatmap: () => set((state: UISlice) => ({ showHeatmap: !state.showHeatmap })),
 
     toggleCodePanel: () =>
-      set((state: any) => {
+      set((state: UISlice) => {
         const newValue = !state.showCodePanel;
         localStorage.setItem('showCodePanel', newValue.toString());
         return { showCodePanel: newValue };

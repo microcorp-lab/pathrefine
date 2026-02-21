@@ -78,8 +78,11 @@ export function useCanvasInteraction({
     pointIndex: number;
   } | null>(null);
 
-  // Clear draggedPath on undo/redo
-  useEffect(() => { setDraggedPath(null); }, [historyIndex]);
+  // Clear draggedPath on undo/redo — deferred to avoid synchronous setState inside an effect
+  useEffect(() => {
+    const id = setTimeout(() => setDraggedPath(null), 0);
+    return () => clearTimeout(id);
+  }, [historyIndex]);
 
   // ── Utility: screen → SVG coordinates ──────────────────────────────────
   const screenToSVG = useCallback((

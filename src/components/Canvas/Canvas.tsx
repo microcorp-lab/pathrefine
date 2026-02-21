@@ -72,10 +72,14 @@ export const Canvas: React.FC = () => {
   // Auto-collapse heatmap legend after 5 s; reset when heatmap is toggled on
   useEffect(() => {
     if (!showHeatmap) return;
-    setLegendExpanded(true);
-    if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
-    legendTimerRef.current = setTimeout(() => setLegendExpanded(false), 5000);
+    // Defer setState to avoid synchronous state update inside an effect
+    const expandId = setTimeout(() => {
+      setLegendExpanded(true);
+      if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
+      legendTimerRef.current = setTimeout(() => setLegendExpanded(false), 5000);
+    }, 0);
     return () => {
+      clearTimeout(expandId);
       if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
     };
   }, [showHeatmap]);
