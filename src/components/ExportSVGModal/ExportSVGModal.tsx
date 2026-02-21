@@ -3,6 +3,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { AutoColorizePanel, type ColorMapping } from '../AutoColorizePanel';
 import { extractUniqueColors, generateDefaultVariables, applyColorMappings } from '../../engine/colorMapping';
 import { exportSVG } from '../../engine/parser';
+import { applySvgo, formatBytes, svgByteSize } from '../../engine/svgoOptimize';
 import { Modal } from '../Modal/Modal';
 
 interface ExportSVGModalProps {
@@ -18,6 +19,10 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
   const [step, setStep] = useState<1 | 2>(1);
   const [filename, setFilename] = useState('icon');
   const [useAutoColorize, setUseAutoColorize] = useState(false);
+  const [useAdvancedOptimization, setUseAdvancedOptimization] = useState(true);
+
+  // Pre-computed SVG strings for Step 2 — computed once on entry, reused on download
+  const [step2Svgs, setStep2Svgs] = useState<{ raw: string; optimized: string } | null>(null);
   
   // Color mappings state - updates when SVG changes
   const currentMappings = useMemo(() => {
@@ -33,6 +38,24 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
   useEffect(() => {
     setColorMappings(currentMappings);
   }, [currentMappings]);
+
+  // Pre-compute SVG strings whenever Step 2 is active.
+  // We compute both raw and optimized so the size delta is always visible,
+  // regardless of which toggle state the user is in.
+  useEffect(() => {
+    if (step !== 2 || !svgDocument) {
+      setStep2Svgs(null);
+      return;
+    }
+    let documentToExport = svgDocument;
+    if (useAutoColorize) {
+      documentToExport = applyColorMappings(svgDocument, colorMappings, useCssVariables, selectedPathIds);
+    }
+    const raw = exportSVG(documentToExport);
+    const optimized = applySvgo(raw);
+    setStep2Svgs({ raw, optimized });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, svgDocument, useAutoColorize, useCssVariables]);
 
   // Update variable name for a specific color
   const updateVariableName = useCallback((originalColor: string, newName: string) => {
@@ -63,22 +86,10 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
   }, [step, onClose]);
 
   const handleDownload = useCallback(() => {
-    if (!svgDocument) return;
+    if (!svgDocument || !step2Svgs) return;
 
-    // Apply color mappings if enabled
-    let documentToExport = svgDocument;
-    if (useAutoColorize) {
-      documentToExport = applyColorMappings(
-        svgDocument,
-        colorMappings,
-        useCssVariables,
-        selectedPathIds
-      );
-    }
+    const svgMarkup = useAdvancedOptimization ? step2Svgs.optimized : step2Svgs.raw;
 
-    // Export to SVG
-    const svgMarkup = exportSVG(documentToExport);
-    
     // Create download
     const blob = new Blob([svgMarkup], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
@@ -89,9 +100,9 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     onClose();
-  }, [svgDocument, useAutoColorize, colorMappings, useCssVariables, selectedPathIds, filename, onClose]);
+  }, [svgDocument, step2Svgs, useAdvancedOptimization, filename, onClose]);
 
   return (
     <Modal
@@ -170,6 +181,25 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
             </div>
           </div>
 
+          {/* Advanced optimization toggle */}
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="use-advanced-optimization"
+              checked={useAdvancedOptimization}
+              onChange={(e) => setUseAdvancedOptimization(e.target.checked)}
+              className="mt-1 w-4 h-4"
+            />
+            <div>
+              <label htmlFor="use-advanced-optimization" className="font-medium cursor-pointer">
+                Advanced optimization
+              </label>
+              <p className="text-sm text-text-secondary mt-1">
+                Strip IDs, remove whitespace, optimise coordinates and colours via SVGO
+              </p>
+            </div>
+          </div>
+
           {/* Summary */}
           <div className="bg-bg-tertiary rounded p-4 space-y-2 text-sm">
             <h3 className="font-medium">Export Summary</h3>
@@ -178,6 +208,24 @@ export const ExportSVGModal: React.FC<ExportSVGModalProps> = ({ isOpen, onClose 
               {useAutoColorize && (
                 <div>• Color mapping: {useCssVariables ? `${colorMappings.length} CSS variables` : 'currentColor'}</div>
               )}
+              {step2Svgs && (() => {
+                const rawSize = svgByteSize(step2Svgs.raw);
+                const optSize = svgByteSize(step2Svgs.optimized);
+                const saving = Math.round((1 - optSize / rawSize) * 100);
+                return useAdvancedOptimization ? (
+                  <div>
+                    • File size:{' '}
+                    <span className="line-through text-text-secondary/50">{formatBytes(rawSize)}</span>
+                    {' → '}
+                    <span className="text-green-400 font-medium">{formatBytes(optSize)}</span>
+                    {saving > 0 && (
+                      <span className="ml-1 text-green-400">−{saving}%</span>
+                    )}
+                  </div>
+                ) : (
+                  <div>• File size: {formatBytes(rawSize)}</div>
+                );
+              })()}
             </div>
           </div>
         </div>

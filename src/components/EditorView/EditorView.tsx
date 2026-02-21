@@ -10,6 +10,7 @@ import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
 import { SmoothPathModal } from '../SmoothPathModal/SmoothPathModal';
 import { useEditorStore } from '../../store/editorStore';
 import { exportSVG, parseSVG } from '../../engine/parser';
+import { applySvgo } from '../../engine/svgoOptimize';
 import { mergeSimilarPaths, mergeSelectedPaths } from '../../engine/pathMerging';
 import { autoColorize } from '../../engine/pathEditor';
 import { perfectSquare } from '../../engine/perfectSquare';
@@ -192,7 +193,8 @@ export function EditorView() {
     if (!svgDocument) return;
 
     try {
-      const svgString = exportSVG(svgDocument);
+      const rawSvg = exportSVG(svgDocument);
+      const svgString = applySvgo(rawSvg);
       const blob = new Blob([svgString], { type: 'image/svg+xml' });
       const url = URL.createObjectURL(blob);
       
