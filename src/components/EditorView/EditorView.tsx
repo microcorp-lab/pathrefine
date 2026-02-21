@@ -20,6 +20,7 @@ import { MobileNotice } from '../MobileNotice';
 import { Dropdown } from '../Dropdown';
 import { toast } from 'sonner';
 import { ProFeaturesContext } from '../../context/ProFeaturesContext';
+import { track } from '../../utils/analytics';
 
 export function EditorView() {
   const navigate = useNavigate();
@@ -529,12 +530,12 @@ export function EditorView() {
                   {
                     label: 'Export to SVG',
                     icon: <Save size={16} />,
-                    onClick: handleExport
+                    onClick: () => { track({ name: 'export_triggered', format: 'svg' }); handleExport(); }
                   },
                   ...(hasProFeatures ? [{
                     label: 'Export Component',
                     icon: <FileCode size={16} />,
-                    onClick: () => setShowExportModal(true),
+                    onClick: () => { track({ name: 'export_triggered', format: 'component' }); setShowExportModal(true); },
                     onRestrictedClick: () => {
                       setProFeatureName('Export Component');
                       setProFeatureDescription('Export your SVG as optimized framework components for React, Vue, Svelte, or Solid. Includes TypeScript support and automatic prop handling.');
@@ -564,7 +565,7 @@ export function EditorView() {
                   ...(hasProFeatures ? [{
                     label: 'Export as Image',
                     icon: <Image size={16} />,
-                    onClick: () => setShowImageExportModal(true),
+                    onClick: () => { track({ name: 'export_triggered', format: 'image' }); setShowImageExportModal(true); },
                     onRestrictedClick: () => {
                       setProFeatureName('Export as Image');
                       setProFeatureDescription('Export your SVG as high-quality raster images in multiple formats: WebP for web, PNG with transparency, or multi-resolution ICO files for favicons.');

@@ -15,6 +15,7 @@ import type { PathAlignment, Path } from '../../types/svg';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { toast } from 'sonner';
 import { ProFeaturesContext } from '../../context/ProFeaturesContext';
+import { track } from '../../utils/analytics';
 
 export const Toolbar: React.FC = () => {
   // Get PRO features from context
@@ -71,6 +72,7 @@ export const Toolbar: React.FC = () => {
       toast.warning('Load an SVG first');
       return;
     }
+    track({ name: 'auto_colorize_opened' });
     setShowAutoColorizeModal(true);
   }, [svgDocument]);
 
@@ -79,6 +81,7 @@ export const Toolbar: React.FC = () => {
       toast.warning('Select a path first');
       return;
     }
+    track({ name: 'auto_refine_opened' });
     setShowAutoRefineModal(true);
   }, [svgDocument, selectedPathIds]);
 
@@ -102,6 +105,7 @@ export const Toolbar: React.FC = () => {
           }
           const smoothed = organicSmoothPath(path, smoothness, true, cornerAngle);
           updatePath(pathId, smoothed, 'Organic smooth');
+          track({ name: 'smooth_applied', mode: 'organic' });
           toast.success(`Smoothed path organically`, {
             description: `Reduced jitter with ${Math.round(smoothness * 100)}% strength`
           });
@@ -114,6 +118,7 @@ export const Toolbar: React.FC = () => {
             preserveSmooth
           );
           updatePath(pathId, smoothed, 'Polish curves');
+          track({ name: 'smooth_applied', mode: 'polish' });
           toast.success(`Polished path curves`, {
             description: `Applied ${Math.round(smoothness * 100)}% smoothing factor`
           });
@@ -128,33 +133,44 @@ export const Toolbar: React.FC = () => {
       return;
     }
 
+    track({ name: 'smart_heal_opened' });
     setShowSmartHealModal(true);
   }, [svgDocument, selectedPathIds]);
 
-  const handleApplySmartHeal = useCallback((resultPath: Path, originalPathId: string) => {
-    if (!svgDocument) return;
+  const handleApplySmartHeal = useCallback((results: Array<{ path: Path; originalPathId: string }>) => {
+    if (!svgDocument || results.length === 0) return;
 
-    // We received the fully calculated path from the modal
-    // This allows the modal to use advanced logic (Auto Heal) that we can't easily replicate here just by "points to remove"
-    
-    // Find the original path to calculate stats
-    const originalPath = svgDocument.paths.find(p => p.id === originalPathId);
-    if (originalPath) {
-      // Calculate original anchor points
-      const originalCount = countAnchorPoints(originalPath);
-      
-      // Update with the Result Path directly
-      updatePath(originalPathId, resultPath, `Smart Heal`);
-      
-      // Calculate new anchor points
-      const newCount = countAnchorPoints(resultPath);
-      const diff = originalCount - newCount;
-      
-      toast.success(`Smart Heal complete`, {
-        description: `Removed ${diff} redundant point${diff !== 1 ? 's' : ''} (${Math.round((diff/originalCount)*100)}%)`
+    if (results.length === 1) {
+      // Single path — one updatePath call (own undo entry)
+      const { path: resultPath, originalPathId } = results[0];
+      const originalPath = svgDocument.paths.find(p => p.id === originalPathId);
+      if (originalPath) {
+        const originalCount = countAnchorPoints(originalPath);
+        updatePath(originalPathId, resultPath, 'Smart Heal');
+        const newCount = countAnchorPoints(resultPath);
+        const diff = originalCount - newCount;
+        track({ name: 'smart_heal_applied', reduction_pct: originalCount > 0 ? Math.round((diff / originalCount) * 100) : 0 });
+        toast.success('Smart Heal complete', {
+          description: `Removed ${diff} redundant point${diff !== 1 ? 's' : ''} (${Math.round((diff / originalCount) * 100)}%)`
+        });
+      }
+    } else {
+      // Batch — apply all in a single setSVGDocument call = one undo step
+      const resultMap = new Map(results.map(r => [r.originalPathId, r.path]));
+      const totalBefore = results.reduce((s, r) => {
+        const orig = svgDocument.paths.find(p => p.id === r.originalPathId);
+        return s + (orig ? countAnchorPoints(orig) : 0);
+      }, 0);
+      const totalAfter = results.reduce((s, r) => s + countAnchorPoints(r.path), 0);
+      const newPaths = svgDocument.paths.map(p => resultMap.get(p.id) ?? p);
+      setSVGDocument({ ...svgDocument, paths: newPaths });
+      const diff = totalBefore - totalAfter;
+      track({ name: 'smart_heal_applied', reduction_pct: totalBefore > 0 ? Math.round((diff / totalBefore) * 100) : 0 });
+      toast.success(`Smart Heal complete · ${results.length} paths`, {
+        description: `${totalBefore} → ${totalAfter} points · ${diff} removed (${Math.round((diff / totalBefore) * 100)}%)`
       });
     }
-  }, [svgDocument, updatePath]);
+  }, [svgDocument, updatePath, setSVGDocument]);
 
   const handleJoinPoints = useCallback(() => {
     if (!svgDocument || !editingPathId || selectedPointIndices.length < 2) {

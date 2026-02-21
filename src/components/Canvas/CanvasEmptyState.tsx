@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { DEMO_LOGO_SVG } from '../../data/demoLogo';
 import { parseSVG } from '../../engine/parser';
 import { useEditorStore } from '../../store/editorStore';
+import { track } from '../../utils/analytics';
 
 export const CanvasEmptyState: React.FC = () => {
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);
@@ -15,6 +16,7 @@ export const CanvasEmptyState: React.FC = () => {
   const loadDemoLogo = useCallback(() => {
     const doc = parseSVG(DEMO_LOGO_SVG);
     setSVGDocument(doc);
+    track({ name: 'svg_loaded', source: 'demo' });
     setTimeout(() => {
       if (doc.paths.length > 0) {
         const pathId = doc.paths[0].id;
@@ -45,6 +47,7 @@ export const CanvasEmptyState: React.FC = () => {
         const groupTransformCount = (text.match(/<g\b[^>]*\stransform=/gi) ?? []).length;
         const doc = parseSVG(text);
         setSVGDocument(doc);
+        track({ name: 'svg_loaded', source: 'file' });
         const canvasW = Math.max(window.innerWidth - 560, 200);
         const canvasH = Math.max(window.innerHeight - 64, 200);
         const fitZoom = Math.min((canvasW * 0.6) / doc.width, (canvasH * 0.6) / doc.height, 6);

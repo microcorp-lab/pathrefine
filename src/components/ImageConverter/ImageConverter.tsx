@@ -4,6 +4,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { parseSVG } from '../../engine/parser';
 import { analyzeDocument } from '../../engine/pathAnalysis';
 import { generateSVG } from '../../engine/vtracerHelper';
+import { track } from '../../utils/analytics';
 
 export interface VTracerConfig {
   colorPrecision: number;
@@ -144,6 +145,7 @@ export const ImageConverter: React.FC<ImageConverterProps> = ({ onClose }) => {
       const doc = parseSVG(svgString);
       
       setSVGDocument(doc);
+      track({ name: 'svg_loaded', source: 'image_converter' });
 
       // Analyze the result
       const analysis = analyzeDocument(doc);

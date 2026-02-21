@@ -5,11 +5,11 @@ import { autoHealPath, INTENSITY_PRESETS, type IntensityLevel } from '../../engi
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { Flame } from 'lucide-react';
 import { Modal } from '../Modal/Modal';
-import type { Point, BezierSegment, Path } from '../../types/svg';
+import type { Point, BezierSegment, Path, SVGDocument } from '../../types/svg';
 
 interface SmartHealModalProps {
   onClose: () => void;
-  onApply: (resultPath: Path, originalPathId: string) => void;
+  onApply: (results: Array<{ path: Path; originalPathId: string }>) => void;
 }
 
 interface PointAnalysis {
@@ -23,6 +23,19 @@ interface PointAnalysis {
 /**
  * Calculate the importance score of a point (0-1, where 1 is most important)
  */
+/** Build a flat SVG string for a multi-path document, highlighting selected paths */
+function buildBatchPreviewSVG(doc: SVGDocument, selectedIds: string[]): string {
+  const viewBox = doc.viewBox
+    ? `${doc.viewBox.x} ${doc.viewBox.y} ${doc.viewBox.width} ${doc.viewBox.height}`
+    : `0 0 ${doc.width || 24} ${doc.height || 24}`;
+  const paths = doc.paths.map((p: Path) => {
+    const opacity = selectedIds.includes(p.id) ? 1 : 0.25;
+    const t = p.transform?.raw ? ` transform="${p.transform.raw}"` : '';
+    return `<path d="${p.d}" fill="${p.fill || 'none'}" stroke="${p.stroke || 'none'}" stroke-width="${p.strokeWidth || 1}" opacity="${opacity}"${t}/>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${paths.join('')}</svg>`;
+}
+
 function calculatePointImportance(
   prev: Point,
   current: Point,
@@ -186,10 +199,13 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   const editingPathId = useEditorStore(state => state.editingPathId);
-  
-  // Mode state
+
+  // Batch mode: more than one path selected (regardless of editingPathId)
+  const isBatchMode = selectedPathIds.length > 1;
+
+  // Mode state — manual is single-path only
   const [mode, setMode] = useState<'auto' | 'manual'>('auto');
-  
+
   // Auto-Heal state
   const [autoHealIntensity, setAutoHealIntensity] = useState<IntensityLevel>('medium');
   const [autoHealApplied, setAutoHealApplied] = useState(false);
@@ -212,6 +228,43 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
 
   // Freeze original document on mount
   const [originalDocument] = useState(() => JSON.parse(JSON.stringify(svgDocument)));
+
+  // Batch: synchronously heal all selected paths (useMemo, no state machine needed)
+  const healedBatchDocument = useMemo(() => {
+    if (!isBatchMode || !originalDocument) return null;
+    const doc = JSON.parse(JSON.stringify(originalDocument)) as SVGDocument;
+    doc.paths = doc.paths.map((p: Path) =>
+      selectedPathIds.includes(p.id) ? autoHealPath(p, autoHealIntensity) : p
+    );
+    return doc;
+  }, [isBatchMode, originalDocument, selectedPathIds, autoHealIntensity]);
+
+  // Batch stats derived from the two documents
+  const batchStats = useMemo(() => {
+    if (!isBatchMode || !originalDocument || !healedBatchDocument) return null;
+    let totalBefore = 0;
+    let totalAfter = 0;
+    selectedPathIds.forEach(id => {
+      const orig   = (originalDocument as SVGDocument).paths.find((p: Path) => p.id === id);
+      const healed = healedBatchDocument.paths.find((p: Path) => p.id === id);
+      if (orig)   totalBefore += countAnchorPoints(orig);
+      if (healed) totalAfter  += countAnchorPoints(healed);
+    });
+    const reduction = totalBefore - totalAfter;
+    const percent   = totalBefore > 0 ? Math.round((reduction / totalBefore) * 100) : 0;
+    return { totalBefore, totalAfter, reduction, percent, count: selectedPathIds.length };
+  }, [isBatchMode, originalDocument, healedBatchDocument, selectedPathIds]);
+
+  // Batch preview SVGs (shown in left/right panels for multi-path mode)
+  const batchOriginalSVG = useMemo(() => {
+    if (!isBatchMode || !originalDocument) return '';
+    return buildBatchPreviewSVG(originalDocument as SVGDocument, selectedPathIds);
+  }, [isBatchMode, originalDocument, selectedPathIds]);
+
+  const batchHealedSVG = useMemo(() => {
+    if (!isBatchMode || !healedBatchDocument) return '';
+    return buildBatchPreviewSVG(healedBatchDocument, selectedPathIds);
+  }, [isBatchMode, healedBatchDocument, selectedPathIds]);
 
   // Get the path being edited (original from store)
   const originalTargetPath = useMemo(() => {
@@ -493,14 +546,23 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
   }, [svgDocument, targetPath, originalSVG, mode, autoHealedPath, manualHealedPath, previewZoom, showControlPoints]);
 
   const handleApply = () => {
-    if (!originalTargetPath) return;
-
-    // Use the appropriate stored healed path
-    const finalPath = mode === 'auto' ? autoHealedPath : manualHealedPath;
-    if (!finalPath) return;  // Safety check
-    
-    onApply(finalPath, originalTargetPath.id);
-    onClose();
+    if (isBatchMode) {
+      if (!healedBatchDocument) return;
+      const results = selectedPathIds
+        .map(id => {
+          const healed = healedBatchDocument.paths.find((p: Path) => p.id === id);
+          return healed ? { path: healed, originalPathId: id } : null;
+        })
+        .filter(Boolean) as Array<{ path: Path; originalPathId: string }>;
+      onApply(results);
+      onClose();
+    } else {
+      if (!originalTargetPath) return;
+      const finalPath = mode === 'auto' ? autoHealedPath : manualHealedPath;
+      if (!finalPath) return;
+      onApply([{ path: finalPath, originalPathId: originalTargetPath.id }]);
+      onClose();
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -538,18 +600,18 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     setPreviewPan({ x: 0, y: 0 });
   };
 
-  // Auto-run effect: fires whenever pendingAutoRun becomes true
+  // Auto-run effect: single-path only — batch mode uses healedBatchDocument memo
   useEffect(() => {
-    if (!pendingAutoRun || !originalTargetPath || mode !== 'auto') return;
+    if (!pendingAutoRun || mode !== 'auto' || isBatchMode) return;
     setPendingAutoRun(false);
+    if (!originalTargetPath) return;
     const healedPath = autoHealPath(originalTargetPath, autoHealIntensity);
     setAutoHealedPath(healedPath);
     setAutoHealApplied(true);
     setManuallySelectedPoints(new Set());
     setPointsToRemove(1);
-  // Intentional: runs when pendingAutoRun flips; intensity & path captured at that point
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAutoRun, originalTargetPath, autoHealIntensity, mode]);
+  }, [pendingAutoRun, isBatchMode, originalTargetPath, autoHealIntensity, mode]);
 
   // Trigger for Cmd+H and any code that wants to re-run
   const handleRunAutoHeal = useCallback(() => {
@@ -562,7 +624,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     setAutoHealedPath(null);
     setManuallySelectedPoints(new Set());
     setPointsToRemove(0);
-    setPendingAutoRun(false); // Don't auto-run again until user selects an intensity
+    setPendingAutoRun(false);
   }, []);
 
   // Calculate success metrics
@@ -610,10 +672,10 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
   const currentPointCount = totalAnchorPoints;
   const resultPointCount = currentPointCount - pointsToRemoveIndices.size;
 
-  if (!targetPath) {
+  if (!targetPath && !isBatchMode) {
     return (
       <Modal isOpen={true} onClose={onClose} title="Smart Heal" size="sm">
-        <p className="text-text-secondary mb-4">Please select a single path to analyze.</p>
+        <p className="text-text-secondary mb-4">Please select a path to analyze.</p>
         <button
           onClick={onClose}
           className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
@@ -641,18 +703,23 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
           <button
             onClick={handleApply}
             disabled={
-              mode === 'auto'
-                ? !autoHealApplied || !autoHealedPath
-                : !manualHealedPath
+              isBatchMode
+                ? !healedBatchDocument
+                : mode === 'auto'
+                  ? !autoHealApplied || !autoHealedPath
+                  : !manualHealedPath
             }
             className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Apply {mode === 'auto' ? 'Auto-Heal' : 'Manual Changes'}
+            {isBatchMode
+              ? `Apply to ${selectedPathIds.length} Paths`
+              : `Apply ${mode === 'auto' ? 'Auto-Heal' : 'Manual Changes'}`}
           </button>
         </div>
       }
     >
-            {/* Preview Section */}
+            {/* Single-path preview panels */}
+            {!isBatchMode && (
             <div className="mb-4">
               <div className="grid grid-cols-2 gap-4">
                 {/* Original with Analysis */}
@@ -730,8 +797,81 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Mode Selection */}
+            {/* Batch preview (shown when multiple paths selected) */}
+            {isBatchMode && (
+            <div className="mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                {/* Original */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-400">
+                    Original
+                    {batchStats && <span className="text-gray-500 ml-1">({batchStats.totalBefore} pts)</span>}
+                  </h3>
+                  <div
+                    ref={originalPreviewRef}
+                    className="bg-bg-primary rounded border border-border overflow-hidden cursor-move select-none"
+                    style={{ height: '240px' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    <div
+                      className="w-full h-full flex items-center justify-center [&>svg]:max-w-[90%] [&>svg]:max-h-[90%]"
+                      style={{
+                        transform: `scale(${previewZoom}) translate(${previewPan.x / previewZoom}px, ${previewPan.y / previewZoom}px)`,
+                        transformOrigin: 'center',
+                        transition: isPanning ? 'none' : 'transform 0.1s'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: batchOriginalSVG }}
+                    />
+                  </div>
+                </div>
+                {/* Healed */}
+                <div>
+                  <h3 className="text-sm font-medium mb-2 text-gray-400">
+                    After Heal
+                    {batchStats && (
+                      <span className={`ml-1 ${
+                        batchStats.percent >= 20 ? 'text-green-400' :
+                        batchStats.percent >= 5  ? 'text-amber-400' : 'text-gray-500'
+                      }`}>
+                        ({batchStats.totalAfter} pts
+                        {batchStats.percent > 0 && ` · −${batchStats.percent}%`})
+                      </span>
+                    )}
+                  </h3>
+                  <div
+                    ref={healedPreviewRef}
+                    className="bg-bg-primary rounded border border-border overflow-hidden cursor-move select-none"
+                    style={{ height: '240px' }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    <div
+                      className="w-full h-full flex items-center justify-center [&>svg]:max-w-[90%] [&>svg]:max-h-[90%]"
+                      style={{
+                        transform: `scale(${previewZoom}) translate(${previewPan.x / previewZoom}px, ${previewPan.y / previewZoom}px)`,
+                        transformOrigin: 'center',
+                        transition: isPanning ? 'none' : 'transform 0.1s'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: batchHealedSVG }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                {batchStats?.count} selected path{batchStats?.count !== 1 ? 's' : ''} highlighted · Scroll to zoom, drag to pan
+              </p>
+            </div>
+            )}
+
+            {/* Mode Selection — hidden in batch mode */}
+            {!isBatchMode && (
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Healing Mode</label>
               <div className="grid grid-cols-2 gap-2">
@@ -759,6 +899,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                 </button>
               </div>
             </div>
+            )}
 
             {/* Auto-Heal Section */}
             {mode === 'auto' && (
@@ -770,21 +911,38 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                     3-step optimization algorithm
                   </p>
                 </div>
-                {autoHealApplied && autoHealMetrics && (
-                  <div className="text-right">
-                    <div className={`text-sm font-semibold ${
-                      autoHealMetrics.percentReduction >= 50 ? 'text-green-400' :
-                      autoHealMetrics.percentReduction >= 20 ? 'text-amber-400' :
-                      autoHealMetrics.percentReduction >= 5 ? 'text-gray-400' :
-                      'text-gray-500'
-                    }`}>
-                      {autoHealMetrics.percentReduction < 5 ? 'Path Clean ✓' : 
-                       `${autoHealMetrics.percentReduction.toFixed(1)}% Optimized`}
+                {isBatchMode ? (
+                  batchStats && (
+                    <div className="text-right">
+                      <div className={`text-sm font-semibold ${
+                        batchStats.percent >= 50 ? 'text-green-400' :
+                        batchStats.percent >= 20 ? 'text-amber-400' :
+                        batchStats.percent >= 5  ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        {batchStats.percent < 5 ? 'Paths Clean ✓' : `${batchStats.percent}% Optimized`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {batchStats.totalBefore} → {batchStats.totalAfter} pts · {batchStats.count} paths
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {autoHealMetrics.originalCount} → {autoHealMetrics.healedCount} segments
+                  )
+                ) : (
+                  autoHealApplied && autoHealMetrics && (
+                    <div className="text-right">
+                      <div className={`text-sm font-semibold ${
+                        autoHealMetrics.percentReduction >= 50 ? 'text-green-400' :
+                        autoHealMetrics.percentReduction >= 20 ? 'text-amber-400' :
+                        autoHealMetrics.percentReduction >= 5 ? 'text-gray-400' :
+                        'text-gray-500'
+                      }`}>
+                        {autoHealMetrics.percentReduction < 5 ? 'Path Clean ✓' : 
+                         `${autoHealMetrics.percentReduction.toFixed(1)}% Optimized`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {autoHealMetrics.originalCount} → {autoHealMetrics.healedCount} segments
+                      </div>
                     </div>
-                  </div>
+                  )
                 )}
               </div>
 
@@ -862,7 +1020,8 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                {/* Action Buttons — only shown for single path (batch auto-updates via memo) */}
+                {!isBatchMode && (
                 <div className="flex gap-2">
                   <button
                     onClick={handleResetToOriginal}
@@ -872,6 +1031,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                     Reset to Original
                   </button>
                 </div>
+                )}
 
                 {/* Info Text */}
                 <p className="text-[10px] text-gray-500 leading-relaxed">
@@ -883,8 +1043,8 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
             </div>
             )}
 
-            {/* Manual Healing Section */}
-            {mode === 'manual' && (
+            {/* Manual Healing Section — single path only */}
+            {mode === 'manual' && !isBatchMode && (
             <div>
               <div className="mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
                 <p className="text-xs text-gray-400">
