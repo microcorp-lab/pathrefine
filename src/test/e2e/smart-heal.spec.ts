@@ -82,4 +82,15 @@ test.describe('Smart Heal', () => {
     await page.getByRole('button', { name: /^Cancel$/ }).click();
     await expect(page.getByRole('heading', { name: /^Smart Heal$/ })).not.toBeVisible();
   });
+
+  // ── Batch tab (single-path) ─────────────────────────────────────────────
+
+  test('Batch tab is absent when only one path is selected', async ({ page }) => {
+    await loadDemo(page); // exactly one path selected
+    await page.click('[title="Smart Heal (Remove 1 point)"]');
+    await expect(page.getByRole('heading', { name: /^Smart Heal$/ })).toBeVisible();
+
+    // Only Auto-Heal and Manual tabs should exist
+    await expect(page.getByRole('button', { name: /Batch/i })).not.toBeAttached();
+  });
 });

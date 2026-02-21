@@ -85,4 +85,39 @@ test.describe('PRO feature gates — free / open-source build', () => {
 
     expect(apiRequests).toHaveLength(0);
   });
+
+  // ── Smart Heal — Batch tab PRO gate ───────────────────────────────────────────
+
+  test('Batch tab shows a PRO badge when multiple paths are selected in the free build', async ({ page }) => {
+    await loadDemo(page);
+    // loadDemo selects the first path; Meta+click a second to create multi-selection
+    const pathItems = page.locator('[data-testid="path-item"]');
+    await pathItems.nth(1).click({ modifiers: ['Meta'] });
+
+    await page.click('[title="Smart Heal (Remove 1 point)"]');
+    await expect(page.getByRole('heading', { name: /^Smart Heal$/ })).toBeVisible();
+
+    // Batch tab must be present
+    const batchTab = page.getByRole('button', { name: /Batch/i }).first();
+    await expect(batchTab).toBeVisible();
+
+    // It must carry the PRO badge
+    await expect(batchTab.locator('span', { hasText: 'PRO' })).toBeVisible();
+  });
+
+  test('Clicking Batch tab in free build does not activate batch mode', async ({ page }) => {
+    await loadDemo(page);
+    const pathItems = page.locator('[data-testid="path-item"]');
+    await pathItems.nth(1).click({ modifiers: ['Meta'] });
+
+    await page.click('[title="Smart Heal (Remove 1 point)"]');
+    await expect(page.getByRole('heading', { name: /^Smart Heal$/ })).toBeVisible();
+
+    await page.getByRole('button', { name: /Batch/i }).first().click();
+
+    // Mode must remain on Auto-Heal — the Apply button stays labelled "Apply Auto-Heal"
+    await expect(page.getByRole('button', { name: /Apply Auto-Heal/i })).toBeVisible();
+    // The batch-mode apply label must NOT appear
+    await expect(page.getByRole('button', { name: /Apply to \d+ Paths/i })).not.toBeVisible();
+  });
 });

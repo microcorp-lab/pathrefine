@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef, useContext } from 'react';
 import { useEditorStore } from '../../store/editorStore';
+import { ProFeaturesContext } from '../../context/ProFeaturesContext';
 import { healPathMultiple } from '../../engine/smartHeal';
 import { autoHealPath, INTENSITY_PRESETS, type IntensityLevel } from '../../engine/pathMerging';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
@@ -199,12 +200,21 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   const editingPathId = useEditorStore(state => state.editingPathId);
+  const toggleUpgradeModal = useEditorStore(state => state.toggleUpgradeModal);
 
-  // Batch mode: more than one path selected (regardless of editingPathId)
-  const isBatchMode = selectedPathIds.length > 1;
+  // Runtime PRO subscription status — read from authStore via ProFeaturesContext
+  const proFeatures = useContext(ProFeaturesContext);
+  if (!proFeatures) throw new Error('ProFeaturesContext not found');
+  const isPro = proFeatures.hooks.useAuthStore(state => state.isPro);
 
-  // Mode state — manual is single-path only
-  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
+  // Mode: 'auto' | 'manual' | 'batch'
+  // PRO users with >1 paths selected open directly in Batch mode.
+  const [mode, setMode] = useState<'auto' | 'manual' | 'batch'>(
+    selectedPathIds.length > 1 && isPro ? 'batch' : 'auto'
+  );
+
+  // Batch mode is active only when the Batch tab is explicitly selected (PRO only)
+  const isBatchMode = mode === 'batch';
 
   // Auto-Heal state
   const [autoHealIntensity, setAutoHealIntensity] = useState<IntensityLevel>('medium');
@@ -613,20 +623,6 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingAutoRun, isBatchMode, originalTargetPath, autoHealIntensity, mode]);
 
-  // Trigger for Cmd+H and any code that wants to re-run
-  const handleRunAutoHeal = useCallback(() => {
-    if (mode === 'auto') setPendingAutoRun(true);
-  }, [mode]);
-
-  // Reset to original
-  const handleResetToOriginal = useCallback(() => {
-    setAutoHealApplied(false);
-    setAutoHealedPath(null);
-    setManuallySelectedPoints(new Set());
-    setPointsToRemove(0);
-    setPendingAutoRun(false);
-  }, []);
-
   // Calculate success metrics
   const autoHealMetrics = useMemo(() => {
     if (!autoHealApplied || !originalTargetPath || !autoHealedPath) {
@@ -645,18 +641,6 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
       percentReduction
     };
   }, [autoHealApplied, originalTargetPath, autoHealedPath]);
-
-  // Handle Cmd+H for Auto-Heal (Escape is handled by base Modal)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
-        e.preventDefault();
-        handleRunAutoHeal();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleRunAutoHeal]);
 
   // Calculate total anchor points - MUST be before any conditional returns
   const originalPointCount = useMemo(() => {
@@ -870,11 +854,10 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
             </div>
             )}
 
-            {/* Mode Selection — hidden in batch mode */}
-            {!isBatchMode && (
+            {/* Mode Selection — always shown */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2">Healing Mode</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className={`grid gap-2 ${selectedPathIds.length > 1 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <button
                   onClick={() => setMode('auto')}
                   className={`px-4 py-2 rounded border transition-all ${
@@ -897,18 +880,41 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                   <div className="font-medium">🔧 Manual</div>
                   <div className="text-xs opacity-80">Click to select points</div>
                 </button>
+                {selectedPathIds.length > 1 && (
+                <button
+                  onClick={() => isPro ? setMode('batch') : toggleUpgradeModal()}
+                  className={`px-4 py-2 rounded border transition-all relative ${
+                    mode === 'batch'
+                      ? 'bg-gradient-to-r from-accent-primary to-purple-500 border-accent-primary text-white shadow-lg shadow-accent-primary/50'
+                      : isPro
+                        ? 'bg-bg-primary border-border text-gray-400 hover:border-gray-500'
+                        : 'bg-bg-primary border-border text-gray-600 cursor-pointer hover:border-purple-500/50'
+                  }`}
+                >
+                  {!isPro && (
+                    <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 text-[8px] leading-none font-black tracking-wide bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md shadow-md border border-white/20">PRO</span>
+                  )}
+                  <div className="font-medium">
+                    ⚡ Batch
+                  </div>
+                  <div className="text-xs opacity-80">{selectedPathIds.length} paths</div>
+                </button>
+                )}
               </div>
             </div>
-            )}
 
-            {/* Auto-Heal Section */}
-            {mode === 'auto' && (
+            {/* Auto-Heal / Batch Settings — intensity picker shared by both modes */}
+            {(mode === 'auto' || mode === 'batch') && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-base font-semibold">Auto-Heal Settings</h3>
+                  <h3 className="text-base font-semibold">
+                    {isBatchMode ? 'Batch Heal Settings' : 'Auto-Heal Settings'}
+                  </h3>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    3-step optimization algorithm
+                    {isBatchMode
+                      ? `Applied to all ${selectedPathIds.length} selected paths · preview updates instantly`
+                      : '3-step optimization algorithm'}
                   </p>
                 </div>
                 {isBatchMode ? (
@@ -935,7 +941,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                         autoHealMetrics.percentReduction >= 5 ? 'text-gray-400' :
                         'text-gray-500'
                       }`}>
-                        {autoHealMetrics.percentReduction < 5 ? 'Path Clean ✓' : 
+                        {autoHealMetrics.percentReduction < 5 ? 'Path Clean ✓' :
                          `${autoHealMetrics.percentReduction.toFixed(1)}% Optimized`}
                       </div>
                       <div className="text-xs text-gray-500">
@@ -954,7 +960,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     <button
-                      onClick={() => { setAutoHealIntensity('light'); setPendingAutoRun(true); }}
+                      onClick={() => { setAutoHealIntensity('light'); if (!isBatchMode) setPendingAutoRun(true); }}
                       title="Light: 0.05% tolerance, 20° corner angle. Best for preserving fine details and artistic curves."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'light'
@@ -969,7 +975,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => { setAutoHealIntensity('medium'); setPendingAutoRun(true); }}
+                      onClick={() => { setAutoHealIntensity('medium'); if (!isBatchMode) setPendingAutoRun(true); }}
                       title="Medium: 0.15% tolerance, 30° corner angle. Recommended balance between optimization and quality."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'medium'
@@ -984,7 +990,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => { setAutoHealIntensity('strong'); setPendingAutoRun(true); }}
+                      onClick={() => { setAutoHealIntensity('strong'); if (!isBatchMode) setPendingAutoRun(true); }}
                       title="Strong: 0.5% tolerance, 45° corner angle. Aggressive optimization for web graphics and icons."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'strong'
@@ -1001,7 +1007,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => { setAutoHealIntensity('extreme'); setPendingAutoRun(true); }}
+                      onClick={() => { setAutoHealIntensity('extreme'); if (!isBatchMode) setPendingAutoRun(true); }}
                       title="Extreme: 1.5% tolerance, 60° corner angle. Maximum simplification for heavily traced SVGs."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'extreme'
@@ -1020,31 +1026,18 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                   </div>
                 </div>
 
-                {/* Action Buttons — only shown for single path (batch auto-updates via memo) */}
-                {!isBatchMode && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleResetToOriginal}
-                    disabled={!autoHealedPath}
-                    className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Reset to Original
-                  </button>
-                </div>
-                )}
-
                 {/* Info Text */}
                 <p className="text-[10px] text-gray-500 leading-relaxed">
                   <span className="font-semibold">Auto-Heal</span> applies 3-step simplification
                   (Visvalingam-Whyatt → Schneider curve fitting → G1 continuity).
-                  Choose a different intensity level to re-run instantly. Press <kbd className="px-1 py-0.5 bg-bg-tertiary rounded text-[9px]">⌘H</kbd> to re-run.
+                  Preview updates instantly when you change intensity.
                 </p>
               </div>
             </div>
             )}
 
             {/* Manual Healing Section — single path only */}
-            {mode === 'manual' && !isBatchMode && (
+            {mode === 'manual' && (
             <div>
               <div className="mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
                 <p className="text-xs text-gray-400">

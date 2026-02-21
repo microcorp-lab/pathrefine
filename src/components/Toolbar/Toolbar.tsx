@@ -165,7 +165,7 @@ export const Toolbar: React.FC = () => {
       const newPaths = svgDocument.paths.map(p => resultMap.get(p.id) ?? p);
       setSVGDocument({ ...svgDocument, paths: newPaths });
       const diff = totalBefore - totalAfter;
-      track({ name: 'smart_heal_applied', reduction_pct: totalBefore > 0 ? Math.round((diff / totalBefore) * 100) : 0 });
+      track({ name: 'heal_all_applied', paths_count: results.length, total_reduction_pct: totalBefore > 0 ? Math.round((diff / totalBefore) * 100) : 0 });
       toast.success(`Smart Heal complete · ${results.length} paths`, {
         description: `${totalBefore} → ${totalAfter} points · ${diff} removed (${Math.round((diff / totalBefore) * 100)}%)`
       });

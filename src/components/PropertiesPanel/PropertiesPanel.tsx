@@ -8,7 +8,7 @@ import {
   getHealthPercentage 
 } from '../../engine/pathAnalysis';
 import { exportSVG } from '../../engine/parser';
-import { Eye, EyeOff, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
 
 export const PropertiesPanel: React.FC = () => {
   const svgDocument = useEditorStore(state => state.svgDocument);
@@ -27,6 +27,7 @@ export const PropertiesPanel: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [pendingDeleteAll, setPendingDeleteAll] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [expandedPathIds, setExpandedPathIds] = useState<Set<string>>(new Set());
 
   // Auto-reset pending deletes after 3 seconds
   useEffect(() => {
@@ -230,13 +231,35 @@ export const PropertiesPanel: React.FC = () => {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-sm font-medium text-text-secondary">All Paths</h4>
-          <span className="text-xs text-text-secondary" title="Click to select, Shift+Click for range, Cmd/Ctrl+Click to add/remove">
-            💡
-          </span>
+          <div className="flex items-center gap-1">
+            {selectedPathIds.length > 1 && (
+              <button
+                onClick={() => {
+                  if (pendingDeleteAll) {
+                    selectedPaths.forEach(path => deletePath(path.id, 'Delete Path'));
+                    setPendingDeleteAll(false);
+                  } else {
+                    setPendingDeleteAll(true);
+                  }
+                }}
+                className={`px-2 py-0.5 text-xs text-white rounded transition-colors ${
+                  pendingDeleteAll ? 'bg-red-700 ring-1 ring-red-400' : 'bg-red-600 hover:bg-red-700'
+                }`}
+                title={pendingDeleteAll ? 'Click again to confirm' : `Delete ${selectedPathIds.length} selected paths`}
+              >
+                <Trash2 size={12} strokeWidth={1.5} className="inline mr-1" />
+                {pendingDeleteAll ? 'Confirm?' : `Delete ${selectedPathIds.length}`}
+              </button>
+            )}
+            <span className="text-xs text-text-secondary" title="Click to select, Shift+Click for range, Cmd/Ctrl+Click to add/remove">
+              💡
+            </span>
+          </div>
         </div>
         <div className="space-y-1">
           {svgDocument.paths.map((path, index) => {
             const isSelected = selectedPathIds.includes(path.id);
+            const isExpanded = expandedPathIds.has(path.id);
             
             const handlePathClick = (e: React.MouseEvent) => {
               if (e.shiftKey && lastClickedIndex !== null) {
@@ -287,282 +310,238 @@ export const PropertiesPanel: React.FC = () => {
               }
             };
             
+            const pathAnalysis = documentAnalysis?.pathAnalyses.get(path.id);
+            const dotColor = pathAnalysis ? getComplexityColor(pathAnalysis.complexity) : null;
+            const dotTooltip = pathAnalysis
+              ? `${pathAnalysis.complexity.charAt(0).toUpperCase() + pathAnalysis.complexity.slice(1)} — ${pathAnalysis.pointCount} pts, ${pathAnalysis.pointDensity.toFixed(1)} density.${pathAnalysis.complexity === 'bloated' || pathAnalysis.complexity === 'disaster' ? ' Smart Heal recommended.' : ''}`
+              : null;
+
             return (
               <div
                 key={path.id}
-                onClick={handlePathClick}
-                className={`
-                  px-2 py-1 rounded text-sm transition-colors cursor-pointer
-                  ${isSelected 
-                    ? 'bg-accent-primary text-white' 
-                    : 'hover:bg-bg-primary'
-                  }
-                `}
+                data-testid="path-item"
+                className={`rounded text-sm transition-colors ${
+                  isSelected ? 'bg-accent-primary/10 ring-1 ring-accent-primary/30' : 'hover:bg-bg-primary'
+                }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1">
+                {/* Row header — always visible */}
+                <div
+                  onClick={handlePathClick}
+                  className="flex items-center justify-between gap-2 px-2 py-1 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {dotColor && (
+                      <div
+                        className="flex-shrink-0 rounded-full"
+                        style={{ width: 6, height: 6, backgroundColor: dotColor, minWidth: 6 }}
+                        title={dotTooltip ?? undefined}
+                      />
+                    )}
                     {path.fill && (
                       <div
                         className="w-3 h-3 rounded border border-border flex-shrink-0"
                         style={{ backgroundColor: path.fill }}
                       />
                     )}
-                    <span className="truncate">{path.id}</span>
+                    <span className={`truncate ${isSelected ? 'font-medium text-text-primary' : 'text-text-secondary'}`}>
+                      {path.id}
+                    </span>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePathVisibility(path.id);
-                    }}
-                    className="p-1 hover:bg-bg-secondary rounded transition-colors flex-shrink-0"
-                    title={path.visible === false ? 'Show path' : 'Hide path'}
-                  >
-                    {path.visible === false ? 
-                      <EyeOff className="w-4 h-4 text-gray-400" /> : 
-                      <Eye className="w-4 h-4 text-gray-400 group-hover:text-gray-300" />
-                    }
-                  </button>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePathVisibility(path.id);
+                      }}
+                      className="p-1 hover:bg-bg-secondary rounded transition-colors"
+                      title={path.visible === false ? 'Show path' : 'Hide path'}
+                    >
+                      {path.visible === false ?
+                        <EyeOff className="w-3.5 h-3.5 text-gray-400" /> :
+                        <Eye className="w-3.5 h-3.5 text-gray-400" />
+                      }
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedPathIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(path.id)) { next.delete(path.id); } else { next.add(path.id); }
+                          return next;
+                        });
+                      }}
+                      className="p-1 hover:bg-bg-secondary rounded transition-colors"
+                      title={isExpanded ? 'Collapse' : 'Expand path details'}
+                    >
+                      {isExpanded
+                        ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" />
+                        : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                      }
+                    </button>
+                  </div>
                 </div>
+
+                {/* Inline expanded details */}
+                {isExpanded && (
+                  <div className="px-3 pb-3 border-t border-border/50 mt-0.5">
+                    {/* Complexity row */}
+                    {pathAnalysis && (
+                      <div className="flex items-center justify-between mt-2 mb-2 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span>{getComplexityEmoji(pathAnalysis.complexity)}</span>
+                          <span
+                            className="font-semibold capitalize"
+                            style={{ color: getComplexityColor(pathAnalysis.complexity) }}
+                          >
+                            {pathAnalysis.complexity}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-text-secondary">
+                          <span>{pathAnalysis.pointCount} pts</span>
+                          <span>·</span>
+                          <span>{pathAnalysis.pointDensity.toFixed(1)} density</span>
+                        </div>
+                      </div>
+                    )}
+                    {pathAnalysis?.recommendations.length ? (
+                      <div className="mb-2 text-xs text-yellow-400">
+                        💡 {pathAnalysis.recommendations[0]}
+                      </div>
+                    ) : null}
+
+                    {/* Property controls */}
+                    <div className="space-y-3 text-xs">
+                      {/* Fill */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-text-secondary">Fill:</span>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!path.fill && path.fill !== 'none'}
+                              onChange={(e) => {
+                                updatePath(path.id, { ...path, fill: e.target.checked ? '#000000' : 'none' }, 'Toggle fill');
+                              }}
+                              className="cursor-pointer"
+                            />
+                            <span className="text-xs">Enable</span>
+                          </label>
+                        </div>
+                        {path.fill && path.fill !== 'none' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-text-secondary">Color:</span>
+                            {path.fill.startsWith('#') && (
+                              <input
+                                type="color"
+                                value={path.fill}
+                                onChange={(e) => updatePath(path.id, { ...path, fill: e.target.value }, 'Change fill color')}
+                                className="w-10 h-6 rounded border border-border cursor-pointer flex-shrink-0"
+                              />
+                            )}
+                            <input
+                              type="text"
+                              value={path.fill}
+                              onChange={(e) => updatePath(path.id, { ...path, fill: e.target.value }, 'Change fill color')}
+                              className="flex-1 px-2 py-1 bg-bg-primary border border-border rounded font-mono text-xs"
+                              placeholder="#000000"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stroke */}
+                      <div className="space-y-2 pt-2 border-t border-border">
+                        <div className="flex items-center justify-between">
+                          <span className="text-text-secondary">Stroke:</span>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!path.stroke && path.stroke !== 'none'}
+                              onChange={(e) => {
+                                updatePath(path.id, {
+                                  ...path,
+                                  stroke: e.target.checked ? '#000000' : 'none',
+                                  strokeWidth: e.target.checked ? (path.strokeWidth || 1) : path.strokeWidth
+                                }, 'Toggle stroke');
+                              }}
+                              className="cursor-pointer"
+                            />
+                            <span className="text-xs">Enable</span>
+                          </label>
+                        </div>
+                        {path.stroke && path.stroke !== 'none' && (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <span className="text-text-secondary">Color:</span>
+                              {path.stroke.startsWith('#') && (
+                                <input
+                                  type="color"
+                                  value={path.stroke}
+                                  onChange={(e) => updatePath(path.id, { ...path, stroke: e.target.value }, 'Change stroke color')}
+                                  className="w-10 h-6 rounded border border-border cursor-pointer flex-shrink-0"
+                                />
+                              )}
+                              <input
+                                type="text"
+                                value={path.stroke}
+                                onChange={(e) => updatePath(path.id, { ...path, stroke: e.target.value }, 'Change stroke color')}
+                                className="flex-1 px-2 py-1 bg-bg-primary border border-border rounded font-mono text-xs"
+                                placeholder="#000000"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-text-secondary">Width:</span>
+                                <span className="font-mono">{(path.strokeWidth || 1).toFixed(1)}px</span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0.5"
+                                max="10"
+                                step="0.5"
+                                value={path.strokeWidth || 1}
+                                onChange={(e) => updatePath(path.id, { ...path, strokeWidth: parseFloat(e.target.value) }, 'Change stroke width')}
+                                className="w-full"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Meta */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                        <span className="text-text-secondary">Segments:</span>
+                        <span>{path.segments.length}</span>
+                      </div>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => {
+                          if (pendingDeleteId === path.id) {
+                            deletePath(path.id, 'Delete Path');
+                            setPendingDeleteId(null);
+                          } else {
+                            setPendingDeleteId(path.id);
+                          }
+                        }}
+                        className={`w-full flex items-center justify-center gap-1.5 py-1 rounded text-xs transition-colors ${
+                          pendingDeleteId === path.id
+                            ? 'bg-red-700 text-white ring-1 ring-red-400'
+                            : 'bg-red-600/10 text-red-400 hover:bg-red-600 hover:text-white'
+                        }`}
+                        title={pendingDeleteId === path.id ? 'Click again to confirm delete' : 'Delete path'}
+                      >
+                        <Trash2 size={12} strokeWidth={1.5} />
+                        {pendingDeleteId === path.id ? 'Confirm delete?' : 'Delete path'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
-
-      {/* Selection info */}
-      {selectedPaths.length > 0 && documentAnalysis && (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-text-secondary">
-              Selected ({selectedPaths.length})
-            </h4>
-            {selectedPaths.length > 1 && (
-              <button
-                onClick={() => {
-                  if (pendingDeleteAll) {
-                    selectedPaths.forEach(path => deletePath(path.id, 'Delete Path'));
-                    setPendingDeleteAll(false);
-                  } else {
-                    setPendingDeleteAll(true);
-                  }
-                }}
-                className={`px-2 py-1 text-xs text-white rounded transition-colors ${
-                  pendingDeleteAll ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-600 hover:bg-red-700'
-                }`}
-                title={pendingDeleteAll ? 'Click again to confirm delete' : 'Delete all selected paths'}
-                aria-label={pendingDeleteAll ? 'Confirm delete all — Escape to cancel' : 'Delete all selected paths'}
-              >
-                <Trash2 size={14} strokeWidth={1.5} className="inline" /> {pendingDeleteAll ? 'Confirm?' : 'Delete All'}
-              </button>
-            )}
-          </div>
-          {selectedPaths.map(path => {
-            const pathAnalysis = documentAnalysis.pathAnalyses.get(path.id);
-            
-            return (
-              <div key={path.id} className="bg-bg-primary rounded-lg p-3 mb-2">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">
-                      {pathAnalysis ? getComplexityEmoji(pathAnalysis.complexity) : ''}
-                    </span>
-                    <div className="font-medium">{path.id}</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => togglePathVisibility(path.id)}
-                      className="p-1 hover:bg-bg-secondary rounded transition-colors"
-                      title={path.visible === false ? 'Show path' : 'Hide path'}
-                    >
-                      {path.visible === false ? <EyeOff size={18} strokeWidth={1.5} /> : <Eye size={18} strokeWidth={1.5} />}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (pendingDeleteId === path.id) {
-                          deletePath(path.id, 'Delete Path');
-                          setPendingDeleteId(null);
-                        } else {
-                          setPendingDeleteId(path.id);
-                        }
-                      }}
-                      className={`p-1 rounded transition-colors ${
-                        pendingDeleteId === path.id
-                          ? 'bg-red-600 text-white ring-1 ring-red-400'
-                          : 'hover:bg-red-600 hover:text-white'
-                      }`}
-                      title={pendingDeleteId === path.id ? 'Click again to confirm delete' : 'Delete path'}
-                      aria-label={pendingDeleteId === path.id ? `Confirm delete ${path.id} — Escape to cancel` : `Delete path ${path.id}`}
-                    >
-                      <Trash2 size={18} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Path Complexity Indicator */}
-                {pathAnalysis && (
-                  <div className="mb-2 pb-2 border-b border-border">
-                    <div className="text-xs mb-1">
-                      <span className="text-text-secondary">Complexity: </span>
-                      <span 
-                        className="font-bold capitalize"
-                        style={{ color: getComplexityColor(pathAnalysis.complexity) }}
-                      >
-                        {pathAnalysis.complexity}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs text-text-secondary">
-                      <span>{pathAnalysis.pointCount} points</span>
-                      <span>{pathAnalysis.pointDensity.toFixed(1)} density</span>
-                    </div>
-                    {pathAnalysis.recommendations.length > 0 && (
-                      <div className="mt-2 text-xs text-yellow-400">
-                        💡 {pathAnalysis.recommendations[0]}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                <div className="space-y-3 text-xs">
-                  {/* Fill Color */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary">Fill:</span>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!path.fill && path.fill !== 'none'}
-                          onChange={(e) => {
-                            const newFill = e.target.checked ? '#000000' : 'none';
-                            updatePath(path.id, {
-                              ...path,
-                              fill: newFill
-                            }, 'Toggle fill');
-                          }}
-                          className="cursor-pointer"
-                        />
-                        <span className="text-xs">Enable</span>
-                      </label>
-                    </div>
-                    
-                    {path.fill && path.fill !== 'none' && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-text-secondary">Color:</span>
-                        {path.fill.startsWith('#') && (
-                          <input
-                            type="color"
-                            value={path.fill}
-                            onChange={(e) => {
-                              updatePath(path.id, {
-                                ...path,
-                                fill: e.target.value
-                              }, 'Change fill color');
-                            }}
-                            className="w-10 h-6 rounded border border-border cursor-pointer flex-shrink-0"
-                          />
-                        )}
-                        <input
-                          type="text"
-                          value={path.fill}
-                          onChange={(e) => {
-                            updatePath(path.id, {
-                              ...path,
-                              fill: e.target.value
-                            }, 'Change fill color');
-                          }}
-                          className="flex-1 px-2 py-1 bg-bg-primary border border-border rounded font-mono text-xs"
-                          placeholder="#000000"
-                        />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Stroke Controls */}
-                  <div className="space-y-2 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between">
-                      <span className="text-text-secondary">Stroke:</span>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!path.stroke && path.stroke !== 'none'}
-                          onChange={(e) => {
-                            const newStroke = e.target.checked ? '#000000' : 'none';
-                            updatePath(path.id, {
-                              ...path,
-                              stroke: newStroke,
-                              strokeWidth: e.target.checked ? (path.strokeWidth || 1) : path.strokeWidth
-                            }, 'Toggle stroke');
-                          }}
-                          className="cursor-pointer"
-                        />
-                        <span className="text-xs">Enable</span>
-                      </label>
-                    </div>
-                    
-                    {path.stroke && path.stroke !== 'none' && (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-text-secondary">Color:</span>
-                          {path.stroke.startsWith('#') && (
-                            <input
-                              type="color"
-                              value={path.stroke}
-                              onChange={(e) => {
-                                updatePath(path.id, {
-                                  ...path,
-                                  stroke: e.target.value
-                                }, 'Change stroke color');
-                              }}
-                              className="w-10 h-6 rounded border border-border cursor-pointer flex-shrink-0"
-                            />
-                          )}
-                          <input
-                            type="text"
-                            value={path.stroke}
-                            onChange={(e) => {
-                              updatePath(path.id, {
-                                ...path,
-                                stroke: e.target.value
-                              }, 'Change stroke color');
-                            }}
-                            className="flex-1 px-2 py-1 bg-bg-primary border border-border rounded font-mono text-xs"
-                            placeholder="#000000"
-                          />
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-text-secondary">Width:</span>
-                            <span className="font-mono">{(path.strokeWidth || 1).toFixed(1)}px</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0.5"
-                            max="10"
-                            step="0.5"
-                            value={path.strokeWidth || 1}
-                            onChange={(e) => {
-                              updatePath(path.id, {
-                                ...path,
-                                strokeWidth: parseFloat(e.target.value)
-                              }, 'Change stroke width');
-                            }}
-                            className="w-full"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  
-                  <div className="flex justify-between pt-2 border-t border-border">
-                    <span className="text-text-secondary">Segments:</span>
-                    <span>{path.segments.length}</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Tool-specific controls */}
       {activeTool === 'align' && (
