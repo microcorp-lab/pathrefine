@@ -15,17 +15,17 @@ export const CanvasHeatmap: React.FC = () => (
       <div className="flex items-center gap-2 text-xs">
         <div className="w-4 h-4 rounded" style={{ backgroundColor: '#10b981' }} />
         <span className="text-text-secondary">Optimal</span>
-        <span className="ml-auto font-mono text-[10px]">&lt;1.5</span>
+        <span className="ml-auto font-mono text-[10px]">80–100</span>
       </div>
       <div className="flex items-center gap-2 text-xs">
         <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f59e0b' }} />
         <span className="text-text-secondary">Acceptable</span>
-        <span className="ml-auto font-mono text-[10px]">1.5–3</span>
+        <span className="ml-auto font-mono text-[10px]">55–79</span>
       </div>
       <div className="flex items-center gap-2 text-xs">
         <div className="w-4 h-4 rounded" style={{ backgroundColor: '#f97316' }} />
         <span className="text-text-secondary">Bloated</span>
-        <span className="ml-auto font-mono text-[10px]">3–5</span>
+        <span className="ml-auto font-mono text-[10px]">30–54</span>
       </div>
       <div className="flex items-center gap-2 text-xs">
         <div
@@ -37,11 +37,11 @@ export const CanvasHeatmap: React.FC = () => (
           }}
         />
         <span className="text-text-secondary">Disaster</span>
-        <span className="ml-auto font-mono text-[10px]">&gt;5</span>
+        <span className="ml-auto font-mono text-[10px]">0–29</span>
       </div>
     </div>
     <div className="mt-2 pt-2 border-t border-border text-[10px] text-text-secondary">
-      Point density per 100 units
+      Per-path health score (100 = perfect)
       <div className="mt-1 opacity-70">Dashed paths pulse slowly</div>
     </div>
   </div>

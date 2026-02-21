@@ -264,28 +264,58 @@ export function analyzeDocument(document: SVGDocument, actualSvgBytes?: number):
   });
 
   const avgHealth = scoringUnitCount > 0 ? healthSum / scoringUnitCount : 100;
-  // averageComplexity: 0 = perfect, 100 = disaster (inverted health)
-  const averageComplexity = 100 - avgHealth;
 
   // ── Savings estimate ──────────────────────────────────────────────────────
-  // We compute two independent buckets and sum them:
   //
-  //   1. Lossless (always achievable): whitespace removal, coordinate rounding,
-  //      stripping metadata.  Consistently ~12% regardless of complexity.
+  // Three independent signals, combined:
   //
-  //   2. Smart Heal (redundant-point removal): proportional to how many "ghost
-  //      points" exist across all sub-paths.  Capped at 40% (empirically, even
-  //      bloated Figma exports don't reduce below 60% of original via point
-  //      removal alone without visible change).
+  //   1. Lossless (precision rounding + XML cleanup): dynamic — measured from
+  //      actual coordinate precision waste in the path data.  Auto-traced SVGs
+  //      routinely carry 8-10 decimal places per number; rounding to 2 decimal
+  //      places alone can save 15-20%.  Base of 7% covers whitespace/metadata.
   //
-  const losslessFrac = 0.12;
+  //   2. Collinear heal fraction: direct evidence of ghost points on straight
+  //      segments (e.g. Figma "add points" bloat on lines).
+  //
+  //   3. Over-point fraction: total anchor count versus a well-drawn reference
+  //      (≈80 pts for a clean logo/icon).  This is the signal that fires for
+  //      auto-traced bitmaps where each individual sub-path is small and
+  //      synthetically "clean" but the document as a whole has 300-2000 pts.
+  //      Sub-path scoring is geometrically local and cannot see this.
+  //      Ramps from 0 at ≤80 pts to 0.70 at ≥480 pts.
+  //
+  const allPathData = document.paths.map(p => p.d).join(' ');
+  const precisionWaste = computePrecisionWaste(allPathData);
+  // 7% base (whitespace/metadata) + up to 18% from coordinate precision
+  const losslessFrac = Math.min(0.25, 0.07 + precisionWaste * 0.20);
+
   const avgCollinear = globalCollinearUnits > 0 ? globalCollinearSum / globalCollinearUnits : 0;
-  const healFrac = Math.min(0.40, avgCollinear * 0.50);
-  const totalSavingsFrac = Math.min(0.52, losslessFrac + healFrac);
+  const collinearHealFrac = Math.min(0.35, avgCollinear * 0.55);
+  const overPointFrac = Math.min(0.70, Math.max(0, (totalPoints - 80) / 400));
+  const healFrac = Math.max(collinearHealFrac, overPointFrac);
+
+  // Cap at 85%: even the worst auto-traced SVG retains some irreducible overhead
+  const totalSavingsFrac = Math.min(0.85, losslessFrac + healFrac);
+
+  // ── Health ────────────────────────────────────────────────────────────────
+  // Health% and "Could be" file size are both shown to the user — they MUST be
+  // consistent.  A file that can shrink 80% should never show 85% health.
+  //
+  // Strategy: take the more pessimistic of:
+  //   • Geometric complexity (per-sub-path density+collinear analysis)
+  //   • Savings-based complexity (inverse of savings fraction)
+  //
+  // This means a file only scores well on both axes simultaneously — it cannot
+  // hide mass over-tracing behind low per-subpath density.
 
   const reportedFileSize = actualSvgBytes ?? totalEstimatedSize;
   const optimalFileSize = Math.round(reportedFileSize * (1 - totalSavingsFrac));
   const savingsPotential = reportedFileSize - optimalFileSize;
+
+  const savingsBasedComplexity = Math.round(totalSavingsFrac * 100);
+  const geometricComplexity = Math.round(100 - avgHealth);
+  // averageComplexity: 0 = perfect, 100 = disaster (inverted health)
+  const averageComplexity = Math.max(geometricComplexity, savingsBasedComplexity);
 
   return {
     totalPoints,

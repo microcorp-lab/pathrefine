@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Flame } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { useCanvasInteraction } from '../../hooks/useCanvasInteraction';
@@ -37,9 +37,20 @@ export const Canvas: React.FC = () => {
     if (saved !== null) return saved === 'true';
     return window.innerWidth >= 768 && !('ontouchstart' in window);
   });
+  const [legendExpanded, setLegendExpanded] = useState(true);
+  const legendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const svgRef       = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Fit document to visible canvas area (keyed to f)
+  const handleFitToViewport = useCallback(() => {
+    if (!svgDocument || !containerRef.current) return;
+    const { width: cw, height: ch } = containerRef.current.getBoundingClientRect();
+    const fitZoom = Math.min((cw * 0.6) / svgDocument.width, (ch * 0.6) / svgDocument.height, 6);
+    setZoom(Math.max(fitZoom, 0.1));
+    setPan(0, 0);
+  }, [svgDocument, setZoom, setPan]);
 
   const {
     isPanning, setIsPanning, isDraggingPoint, draggedPath,
@@ -53,9 +64,21 @@ export const Canvas: React.FC = () => {
     activeTool, editingPathId, selectedPointIndices,
     svgDocument, updatePath, clearPointSelection, setShowHints,
     zoom, setZoom, setPan,
+    onFitToViewport: handleFitToViewport,
   });
 
   useCanvasTouchZoom({ containerRef, zoom, setZoom });
+
+  // Auto-collapse heatmap legend after 5 s; reset when heatmap is toggled on
+  useEffect(() => {
+    if (!showHeatmap) return;
+    setLegendExpanded(true);
+    if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
+    legendTimerRef.current = setTimeout(() => setLegendExpanded(false), 5000);
+    return () => {
+      if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
+    };
+  }, [showHeatmap]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -119,37 +142,54 @@ export const Canvas: React.FC = () => {
         </div>
 
         {showHeatmap && (
-          <div className="absolute top-4 right-4 bg-bg-secondary/95 backdrop-blur border border-border rounded-lg p-3 shadow-lg">
-            <h4 className="text-xs font-semibold mb-2 flex items-center gap-2">
-              <Flame size={16} strokeWidth={1.5} />
-              <span>Complexity Heatmap</span>
-            </h4>
-            <div className="space-y-1.5">
-              {([ 
-                { color: '#10b981', label: 'Optimal',    range: '<1.5',  pulse: false },
-                { color: '#f59e0b', label: 'Acceptable', range: '1.5-3', pulse: false },
-                { color: '#f97316', label: 'Bloated',    range: '3-5',   pulse: false },
-                { color: '#ef4444', label: 'Disaster',   range: '>5',    pulse: true  },
-              ] as { color: string; label: string; range: string; pulse: boolean }[]).map(({ color, label, range, pulse }) => (
-                <div key={label} className="flex items-center gap-2 text-xs">
-                  <div
-                    className={`w-4 h-4 rounded${pulse ? ' animate-pulse-slow' : ''}`}
-                    style={{
-                      backgroundColor: color,
-                      ...(pulse ? {
-                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)',
-                      } : {}),
-                    }}
-                  />
-                  <span className="text-text-secondary">{label}</span>
-                  <span className="ml-auto font-mono text-[10px]">{range}</span>
+          <div className="absolute top-4 right-4 bg-bg-secondary/95 backdrop-blur border border-border rounded-lg shadow-lg overflow-hidden">
+            <button
+              onClick={() => {
+                const next = !legendExpanded;
+                setLegendExpanded(next);
+                if (next) {
+                  // Re-arm the auto-hide timer when manually expanded
+                  if (legendTimerRef.current) clearTimeout(legendTimerRef.current);
+                  legendTimerRef.current = setTimeout(() => setLegendExpanded(false), 8000);
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 w-full hover:bg-bg-tertiary transition-colors"
+              title={legendExpanded ? 'Collapse legend' : 'Expand legend'}
+            >
+              <Flame size={14} strokeWidth={1.5} />
+              {legendExpanded && <span className="text-xs font-semibold">Complexity Heatmap</span>}
+              <span className="ml-auto text-[10px] text-text-secondary">{legendExpanded ? '−' : '+'}</span>
+            </button>
+            {legendExpanded && (
+              <div className="px-3 pb-3">
+                <div className="space-y-1.5">
+                  {([
+                    { color: '#10b981', label: 'Optimal',    range: '80–100', pulse: false },
+                    { color: '#f59e0b', label: 'Acceptable', range: '55–79',  pulse: false },
+                    { color: '#f97316', label: 'Bloated',    range: '30–54',  pulse: false },
+                    { color: '#ef4444', label: 'Disaster',   range: '0–29',   pulse: true  },
+                  ] as { color: string; label: string; range: string; pulse: boolean }[]).map(({ color, label, range, pulse }) => (
+                    <div key={label} className="flex items-center gap-2 text-xs">
+                      <div
+                        className={`w-4 h-4 rounded${pulse ? ' animate-pulse-slow' : ''}`}
+                        style={{
+                          backgroundColor: color,
+                          ...(pulse ? {
+                            backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 4px)',
+                          } : {}),
+                        }}
+                      />
+                      <span className="text-text-secondary">{label}</span>
+                      <span className="ml-auto font-mono text-[10px]">{range}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-2 pt-2 border-t border-border text-[10px] text-text-secondary">
-              Point density per 100 units
-              <div className="mt-1 opacity-70">Dashed paths pulse slowly</div>
-            </div>
+                <div className="mt-2 pt-2 border-t border-border text-[10px] text-text-secondary">
+                  Per-path health score (100 = perfect)
+                  <div className="mt-1 opacity-70">Dashed paths pulse slowly</div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

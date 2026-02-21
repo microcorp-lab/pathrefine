@@ -3,7 +3,7 @@ import type { SVGDocument } from '../types/svg';
 import type { ColorMapping } from '../components/AutoColorizePanel';
 
 export function extractUniqueColors(_document: SVGDocument): Map<string, number> {
-  console.warn('Color extraction is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
+  if (import.meta.env.DEV) console.warn('Color extraction is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return new Map();
 }
 
@@ -17,6 +17,6 @@ export function applyColorMappings(
   _useCssVariables: boolean,
   _selectedPathIds: string[] = []
 ): SVGDocument {
-  console.warn('Color mapping is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
+  if (import.meta.env.DEV) console.warn('Color mapping is a PRO feature. Visit https://pathrefine.dev/ to upgrade.');
   return document;
 }

@@ -8,7 +8,7 @@ import {
   getHealthPercentage 
 } from '../../engine/pathAnalysis';
 import { exportSVG } from '../../engine/parser';
-import { Eye, EyeOff, Trash2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Eye, EyeOff, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 
 export const PropertiesPanel: React.FC = () => {
   const svgDocument = useEditorStore(state => state.svgDocument);
@@ -132,7 +132,9 @@ export const PropertiesPanel: React.FC = () => {
                 {healthPercentage}%
               </span>
             </div>
-            <span className="text-text-secondary">{scoreExpanded ? '▼' : '▶'}</span>
+            <span className="text-text-secondary" title={scoreExpanded ? 'Collapse details' : 'Expand details'}>
+              {scoreExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </span>
           </button>
           
           <div 

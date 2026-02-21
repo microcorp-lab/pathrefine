@@ -125,8 +125,17 @@ export function useCanvasInteraction({
         setMarqueeEnd(pos);
       }
     } else if (e.button === 0 && activeTool === 'edit' && !e.shiftKey && !e.altKey && !isSpacePressed) {
-      clearSelection();
-      setEditingPath(null);
+      // Only clear selection when clicking empty canvas, not when clicking a path.
+      // The click event (which fires after mousedown) handles path selection via
+      // handlePathClick → selectPath(). If we clear here unconditionally, a slight
+      // mouse movement between mousedown and mouseup can prevent the click event
+      // from firing, leaving the selection incorrectly cleared.
+      const target = e.target as Element;
+      const clickedOnPath = target.closest?.('[data-path-clickable]') !== null;
+      if (!clickedOnPath) {
+        clearSelection();
+        setEditingPath(null);
+      }
     }
   }, [activeTool, isSpacePressed, editingPathId, containerRef, setMarqueeStart, setMarqueeEnd, clearSelection, setEditingPath]);
 

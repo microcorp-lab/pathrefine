@@ -4,6 +4,7 @@ import { healPathMultiple } from '../../engine/smartHeal';
 import { autoHealPath, INTENSITY_PRESETS, type IntensityLevel } from '../../engine/pathMerging';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { Flame } from 'lucide-react';
+import { Modal } from '../Modal/Modal';
 import type { Point, BezierSegment, Path } from '../../types/svg';
 
 interface SmartHealModalProps {
@@ -193,6 +194,8 @@ export const SmartHealModal: React.FC<SmartHealModalProps> = ({ onClose, onApply
   const [autoHealIntensity, setAutoHealIntensity] = useState<IntensityLevel>('medium');
   const [autoHealApplied, setAutoHealApplied] = useState(false);
   const [autoHealedPath, setAutoHealedPath] = useState<Path | null>(null);
+  // pendingAutoRun=true triggers the auto-run effect; starts true so modal runs on mount
+  const [pendingAutoRun, setPendingAutoRun] = useState(true);
   
   // Manual healing state
   const [pointsToRemove, setPointsToRemove] = useState(0);
@@ -535,21 +538,23 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     setPreviewPan({ x: 0, y: 0 });
   };
 
-  // Auto-Heal handler
-  const handleRunAutoHeal = useCallback(() => {
-    if (!originalTargetPath) return;
-    
-    // Run auto-heal with selected intensity
+  // Auto-run effect: fires whenever pendingAutoRun becomes true
+  useEffect(() => {
+    if (!pendingAutoRun || !originalTargetPath || mode !== 'auto') return;
+    setPendingAutoRun(false);
     const healedPath = autoHealPath(originalTargetPath, autoHealIntensity);
-    
-    // Store the healed path
     setAutoHealedPath(healedPath);
     setAutoHealApplied(true);
-    
-    // Reset manual selection so it recalculates on healed path
     setManuallySelectedPoints(new Set());
     setPointsToRemove(1);
-  }, [originalTargetPath, autoHealIntensity]);
+  // Intentional: runs when pendingAutoRun flips; intensity & path captured at that point
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAutoRun, originalTargetPath, autoHealIntensity, mode]);
+
+  // Trigger for Cmd+H and any code that wants to re-run
+  const handleRunAutoHeal = useCallback(() => {
+    if (mode === 'auto') setPendingAutoRun(true);
+  }, [mode]);
 
   // Reset to original
   const handleResetToOriginal = useCallback(() => {
@@ -557,6 +562,7 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     setAutoHealedPath(null);
     setManuallySelectedPoints(new Set());
     setPointsToRemove(0);
+    setPendingAutoRun(false); // Don't auto-run again until user selects an intensity
   }, []);
 
   // Calculate success metrics
@@ -578,21 +584,17 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
     };
   }, [autoHealApplied, originalTargetPath, autoHealedPath]);
 
-  // Handle ESC key and Cmd+H for Auto-Heal
+  // Handle Cmd+H for Auto-Heal (Escape is handled by base Modal)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'h') {
         e.preventDefault();
-        if (!autoHealApplied) {
-          handleRunAutoHeal();
-        }
+        handleRunAutoHeal();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, autoHealApplied, handleRunAutoHeal]);
+  }, [handleRunAutoHeal]);
 
   // Calculate total anchor points - MUST be before any conditional returns
   const originalPointCount = useMemo(() => {
@@ -610,43 +612,46 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
 
   if (!targetPath) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-bg-secondary rounded-lg shadow-xl p-6 max-w-md">
-          <h2 className="text-xl font-semibold mb-4">Smart Heal</h2>
-          <p className="text-text-secondary mb-4">Please select a single path to analyze.</p>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
-          >
-            Close
-          </button>
-        </div>
-      </div>
+      <Modal isOpen={true} onClose={onClose} title="Smart Heal" size="sm">
+        <p className="text-text-secondary mb-4">Please select a single path to analyze.</p>
+        <button
+          onClick={onClose}
+          className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
+        >
+          Close
+        </button>
+      </Modal>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-bg-secondary rounded-lg shadow-xl w-[900px] max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Smart Heal</h2>
-            <p className="text-xs text-text-secondary mt-1">
-              Intelligently remove redundant points while preserving shape
-            </p>
-          </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="Smart Heal"
+      size="xl"
+      footer={
+        <div className="flex gap-2 justify-end">
           <button
             onClick={onClose}
-            className="text-text-secondary hover:text-white text-2xl leading-none"
+            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
           >
-            ×
+            Cancel
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={
+              mode === 'auto'
+                ? !autoHealApplied || !autoHealedPath
+                : !manualHealedPath
+            }
+            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Apply {mode === 'auto' ? 'Auto-Heal' : 'Manual Changes'}
           </button>
         </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="p-6">
+      }
+    >
             {/* Preview Section */}
             <div className="mb-4">
               <div className="grid grid-cols-2 gap-4">
@@ -791,14 +796,13 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                   </label>
                   <div className="grid grid-cols-4 gap-2">
                     <button
-                      onClick={() => setAutoHealIntensity('light')}
-                      disabled={autoHealApplied}
+                      onClick={() => { setAutoHealIntensity('light'); setPendingAutoRun(true); }}
                       title="Light: 0.05% tolerance, 20° corner angle. Best for preserving fine details and artistic curves."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'light'
                           ? 'bg-blue-500 text-white'
                           : 'bg-bg-tertiary text-gray-400 hover:bg-bg-primary'
-                      } ${autoHealApplied ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <div className="text-sm mb-0.5">🌱 Light</div>
                       <div className="text-[10px] opacity-75">Preserve detail</div>
@@ -807,14 +811,13 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => setAutoHealIntensity('medium')}
-                      disabled={autoHealApplied}
+                      onClick={() => { setAutoHealIntensity('medium'); setPendingAutoRun(true); }}
                       title="Medium: 0.15% tolerance, 30° corner angle. Recommended balance between optimization and quality."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'medium'
                           ? 'bg-blue-500 text-white'
                           : 'bg-bg-tertiary text-gray-400 hover:bg-bg-primary'
-                      } ${autoHealApplied ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <div className="text-sm mb-0.5">⚖️ Medium</div>
                       <div className="text-[10px] opacity-75">Recommended</div>
@@ -823,14 +826,13 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => setAutoHealIntensity('strong')}
-                      disabled={autoHealApplied}
+                      onClick={() => { setAutoHealIntensity('strong'); setPendingAutoRun(true); }}
                       title="Strong: 0.5% tolerance, 45° corner angle. Aggressive optimization for web graphics and icons."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'strong'
                           ? 'bg-blue-500 text-white'
                           : 'bg-bg-tertiary text-gray-400 hover:bg-bg-primary'
-                      } ${autoHealApplied ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <div className="text-sm mb-0.5 flex items-center gap-1">
                         <Flame size={14} strokeWidth={1.5} /> Strong
@@ -841,14 +843,13 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
                       </div>
                     </button>
                     <button
-                      onClick={() => setAutoHealIntensity('extreme')}
-                      disabled={autoHealApplied}
+                      onClick={() => { setAutoHealIntensity('extreme'); setPendingAutoRun(true); }}
                       title="Extreme: 1.5% tolerance, 60° corner angle. Maximum simplification for heavily traced SVGs."
                       className={`p-2 rounded text-xs font-medium transition-colors ${
                         autoHealIntensity === 'extreme'
                           ? 'bg-blue-500 text-white'
                           : 'bg-bg-tertiary text-gray-400 hover:bg-bg-primary'
-                      } ${autoHealApplied ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      }`}
                     >
                       <div className="text-sm mb-0.5 flex items-center gap-1">
                         <Flame size={14} strokeWidth={2} className="text-red-400" /> Extreme
@@ -863,31 +864,21 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  {!autoHealApplied ? (
-                    <button
-                      onClick={handleRunAutoHeal}
-                      className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium text-sm transition-colors"
-                    >
-                      Run Auto-Heal
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleResetToOriginal}
-                      className="flex-1 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium text-sm transition-colors"
-                    >
-                      Reset to Original
-                    </button>
-                  )}
+                  <button
+                    onClick={handleResetToOriginal}
+                    disabled={!autoHealedPath}
+                    className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Reset to Original
+                  </button>
                 </div>
 
                 {/* Info Text */}
-                {!autoHealApplied && (
-                  <p className="text-[10px] text-gray-500 leading-relaxed">
-                    <span className="font-semibold">Auto-Heal</span> applies 3-step simplification 
-                    (Visvalingam-Whyatt → Schneider curve fitting → G1 continuity) with auto-close 
-                    for tiny gaps. Then manually refine if needed. Press <kbd className="px-1 py-0.5 bg-bg-tertiary rounded text-[9px]">⌘H</kbd> to run.
-                  </p>
-                )}
+                <p className="text-[10px] text-gray-500 leading-relaxed">
+                  <span className="font-semibold">Auto-Heal</span> applies 3-step simplification
+                  (Visvalingam-Whyatt → Schneider curve fitting → G1 continuity).
+                  Choose a different intensity level to re-run instantly. Press <kbd className="px-1 py-0.5 bg-bg-tertiary rounded text-[9px]">⌘H</kbd> to re-run.
+                </p>
               </div>
             </div>
             )}
@@ -1030,30 +1021,8 @@ ${showControlPoints ? visualizationElements.join('\n') : ''}
             </div>
             </div>
             )}
-          </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="p-4 border-t border-border flex gap-2 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-bg-tertiary hover:bg-border rounded transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={
-              mode === 'auto' 
-                ? !autoHealApplied || !autoHealedPath
-                : !manualHealedPath
-            }
-            className="px-4 py-2 bg-accent-primary hover:bg-indigo-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Apply {mode === 'auto' ? 'Auto-Heal' : 'Manual Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
+        {/* Action Buttons moved to Modal footer */}
+      </Modal>
   );
 };

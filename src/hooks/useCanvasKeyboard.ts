@@ -30,6 +30,7 @@ interface UseCanvasKeyboardOptions {
   zoom: number;
   setZoom: (z: number) => void;
   setPan: (x: number, y: number) => void;
+  onFitToViewport?: () => void;
 }
 
 /**
@@ -53,6 +54,7 @@ export function useCanvasKeyboard({
   zoom,
   setZoom,
   setPan,
+  onFitToViewport,
 }: UseCanvasKeyboardOptions): void {
 
   // ── Space key (pan mode) ────────────────────────────────────────────────
@@ -142,11 +144,16 @@ export function useCanvasKeyboard({
         e.preventDefault();
         setZoom(1);
         setPan(0, 0);
+      } else if ((e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        onFitToViewport?.();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [zoom, setZoom, setPan]);
+  }, [zoom, setZoom, setPan, onFitToViewport]);
 
   // ── 'i' key: toggle hints ───────────────────────────────────────────────
   useEffect(() => {

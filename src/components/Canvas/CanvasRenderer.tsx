@@ -2,7 +2,7 @@ import React from 'react';
 import type { RefObject } from 'react';
 import type { Path, SVGDocument } from '../../types/svg';
 import { extractControlPoints } from '../../engine/pathEditor';
-import { analyzePath } from '../../engine/pathAnalysis';
+import { analyzePath, getComplexityColor } from '../../engine/pathAnalysis';
 
 interface CanvasRendererProps {
   svgDocument: SVGDocument;
@@ -121,19 +121,20 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           const isSelected = selectedPathIds.includes(path.id);
 
           // Heatmap color + opacity
+          // Uses the same scale-normalised, collinear-aware scoreSubpath-derived
+          // complexity tier as the Properties Panel — heatmap and per-path badge
+          // are always consistent with each other and with the Optimization Score.
           let heatmapColor: string | null = null;
           let heatmapOpacity = 0;
           let isDisaster = false;
           if (showHeatmap) {
-            const density = analyzePath(path).pointDensity;
-            if (density < 1.5) {
-              heatmapColor = '#10b981'; heatmapOpacity = 0.2;
-            } else if (density < 3) {
-              heatmapColor = '#f59e0b'; heatmapOpacity = 0.4;
-            } else if (density < 5) {
-              heatmapColor = '#f97316'; heatmapOpacity = 0.6;
-            } else {
-              heatmapColor = '#ef4444'; heatmapOpacity = 0.8; isDisaster = true;
+            const { complexity } = analyzePath(path);
+            heatmapColor = getComplexityColor(complexity);
+            switch (complexity) {
+              case 'optimal':    heatmapOpacity = 0.15; break;
+              case 'acceptable': heatmapOpacity = 0.35; break;
+              case 'bloated':    heatmapOpacity = 0.55; break;
+              case 'disaster':   heatmapOpacity = 0.75; isDisaster = true; break;
             }
           }
 
@@ -149,6 +150,7 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
             <g key={path.id}>
               {/* Main path */}
               <path
+                data-path-clickable
                 d={path.d}
                 fill={path.fill}
                 stroke={path.stroke}

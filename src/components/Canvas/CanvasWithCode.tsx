@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Canvas } from './Canvas';
 import { CodeEditor, type CodeEditorRef } from '../CodeEditor/CodeEditor';
 import { useEditorStore } from '../../store/editorStore';
@@ -12,6 +13,7 @@ export const CanvasWithCode: React.FC = () => {
   const showCodePanel = useEditorStore(state => state.showCodePanel);
   const codePanelHeight = useEditorStore(state => state.codePanelHeight);
   const setCodePanelHeight = useEditorStore(state => state.setCodePanelHeight);
+  const toggleCodePanel = useEditorStore(state => state.toggleCodePanel);
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
   const selectedPointIndices = useEditorStore(state => state.selectedPointIndices);
@@ -249,17 +251,26 @@ export const CanvasWithCode: React.FC = () => {
   
   return (
     <div ref={containerRef} className="flex-1 flex flex-col relative overflow-hidden">
-      {/* Canvas (top part) */}
-      {!showCodePanel ? (
+      {/* Canvas area — wraps Canvas + persistent code-panel toggle */}
+      <div
+        className="relative flex flex-col overflow-hidden"
+        style={showCodePanel
+          ? { height: `${(1 - codePanelHeight) * 100}%`, minHeight: '20%' }
+          : { flex: '1 1 0', minHeight: 0 }}
+      >
         <Canvas />
-      ) : (
-        <div 
-          style={{ height: `${(1 - codePanelHeight) * 100}%`, minHeight: '20%' }}
-          className="relative flex flex-col overflow-hidden"
+
+        {/* Always-visible code panel toggle tab */}
+        <button
+          onClick={toggleCodePanel}
+          className="absolute bottom-0 left-4 z-20 flex items-center gap-1.5 px-3 py-1 bg-bg-secondary border border-border border-b-0 rounded-t text-xs text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors select-none"
+          title={showCodePanel ? 'Hide SVG code (⌘K)' : 'Show SVG code (⌘K)'}
         >
-          <Canvas />
-        </div>
-      )}
+          <span className="font-mono opacity-60">&lt;/&gt;</span>
+          <span>SVG Code</span>
+          {showCodePanel ? <ChevronDown size={12} className="ml-0.5 opacity-50" /> : <ChevronUp size={12} className="ml-0.5 opacity-50" />}
+        </button>
+      </div>
       
       {/* Resize Handle */}
       {showCodePanel && (

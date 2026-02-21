@@ -33,27 +33,21 @@ test.describe('Smart Heal', () => {
 
   // ── Auto-Heal flow ────────────────────────────────────────────────────────
 
-  test('"Run Auto-Heal" changes the button to "Reset to Original"', async ({ page }) => {
+  test('Auto-Heal runs automatically on modal open and shows Reset to Original', async ({ page }) => {
     await loadDemo(page);
     await page.click('[title="Smart Heal (Remove 1 point)"]');
     await expect(page.getByRole('heading', { name: /^Smart Heal$/ })).toBeVisible();
 
-    // Before running, "Run Auto-Heal" is shown
-    await expect(page.getByRole('button', { name: 'Run Auto-Heal' })).toBeVisible();
-
-    await page.getByRole('button', { name: 'Run Auto-Heal' }).click();
-
-    // After running, the button flips to "Reset to Original"
+    // Auto-heal fires on mount — "Reset to Original" should become enabled
     await expect(page.getByRole('button', { name: /Reset to Original/i })).toBeVisible();
-    // "Run Auto-Heal" is no longer shown
+    // No "Run Auto-Heal" button exists in the new flow
     await expect(page.getByRole('button', { name: 'Run Auto-Heal' })).not.toBeVisible();
   });
 
   test('"Apply Auto-Heal" closes the modal and commits the changes', async ({ page }) => {
     await loadDemo(page);
     await page.click('[title="Smart Heal (Remove 1 point)"]');
-    await page.getByRole('button', { name: 'Run Auto-Heal' }).click();
-    // Wait for reset button to confirm the heal ran
+    // Auto-heal runs on open — wait for Reset button to confirm the heal ran
     await expect(page.getByRole('button', { name: /Reset to Original/i })).toBeVisible();
 
     await page.getByRole('button', { name: /Apply Auto-Heal/i }).click();

@@ -24,8 +24,14 @@ export const CanvasEmptyState: React.FC = () => {
           useEditorStore.getState().toggleHeatmap();
         }
       }
+      // Fit SVG to viewport: cap fill at 60% of canvas, never exceed 6x zoom
+      const canvasW = Math.max(window.innerWidth - 560, 200);
+      const canvasH = Math.max(window.innerHeight - 64, 200);
+      const fitZoom = Math.min((canvasW * 0.5) / doc.width, (canvasH * 0.5) / doc.height, 5);
+      setZoom(Math.max(fitZoom, 0.5));
+      setPan(0, 0);
     }, 100);
-  }, [setSVGDocument, selectPath, setEditingPath]);
+  }, [setSVGDocument, selectPath, setEditingPath, setZoom, setPan]);
 
   const handleFileOpen = useCallback(() => {
     const input = document.createElement('input');
@@ -39,7 +45,10 @@ export const CanvasEmptyState: React.FC = () => {
         const groupTransformCount = (text.match(/<g\b[^>]*\stransform=/gi) ?? []).length;
         const doc = parseSVG(text);
         setSVGDocument(doc);
-        setZoom(1);
+        const canvasW = Math.max(window.innerWidth - 560, 200);
+        const canvasH = Math.max(window.innerHeight - 64, 200);
+        const fitZoom = Math.min((canvasW * 0.6) / doc.width, (canvasH * 0.6) / doc.height, 6);
+        setZoom(Math.max(fitZoom, 0.5));
         setPan(0, 0);
         if (groupTransformCount > 0) {
           toast.info(
