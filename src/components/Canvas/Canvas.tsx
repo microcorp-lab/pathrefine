@@ -3,10 +3,12 @@ import { Flame } from 'lucide-react';
 import { useEditorStore } from '../../store/editorStore';
 import { useCanvasInteraction } from '../../hooks/useCanvasInteraction';
 import { useCanvasKeyboard } from '../../hooks/useCanvasKeyboard';
-import { useCanvasTouchZoom } from '../../hooks/useCanvasTouchZoom';
+import { useCanvasTouchInteraction } from '../../hooks/useCanvasTouchInteraction';
+import { useDeviceTier } from '../../hooks/useDeviceTier';
 import { CanvasEmptyState } from './CanvasEmptyState';
 import { CanvasHints } from './CanvasHints';
 import { CanvasRenderer } from './CanvasRenderer';
+import { PathContextMenu } from '../PathContextMenu/PathContextMenu';
 
 export const Canvas: React.FC = () => {
   const svgDocument          = useEditorStore(s => s.svgDocument);
@@ -27,11 +29,24 @@ export const Canvas: React.FC = () => {
   const setPan               = useEditorStore(s => s.setPan);
   const updatePath           = useEditorStore(s => s.updatePath);
   const clearPointSelection  = useEditorStore(s => s.clearPointSelection);
+  const clearSelection       = useEditorStore(s => s.clearSelection);
+  const setEditingPath       = useEditorStore(s => s.setEditingPath);
+  const selectPath           = useEditorStore(s => s.selectPath);
   const setMarqueeStart      = useEditorStore(s => s.setMarqueeStart);
   const setMarqueeEnd        = useEditorStore(s => s.setMarqueeEnd);
+  const openMobileDrawer     = useEditorStore(s => s.openMobileDrawer);
+  const deletePath           = useEditorStore(s => s.deletePath);
+  const togglePathVisibility = useEditorStore(s => s.togglePathVisibility);
+  const setTool              = useEditorStore(s => s.setTool);
 
+  const deviceTier = useDeviceTier();
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [isTouchDevice] = useState(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+
+  // Context menu (long-press on a path)
+  const [contextMenu, setContextMenu] = useState<{
+    pathId: string; x: number; y: number;
+  } | null>(null);
   const [showHints, setShowHints] = useState(() => {
     const saved = localStorage.getItem('showEditHints');
     if (saved !== null) return saved === 'true';
@@ -67,7 +82,33 @@ export const Canvas: React.FC = () => {
     onFitToViewport: handleFitToViewport,
   });
 
-  useCanvasTouchZoom({ containerRef, zoom, setZoom });
+  // Unified touch handler — replaces the old useCanvasTouchZoom
+  useCanvasTouchInteraction({
+    containerRef,
+    svgRef,
+    zoom,
+    pan,
+    setZoom,
+    setPan,
+    activeTool,
+    editingPathId,
+    svgDocument,
+    updatePath,
+    selectPath,
+    setEditingPath,
+    clearSelection,
+    snapToGrid,
+    gridSize,
+    onLongPress: (pathId, x, y) => {
+      setContextMenu({ pathId, x, y });
+    },
+    onPathTap: (pathId) => {
+      // On mobile, open the bottom drawer when a path is tapped
+      if (deviceTier === 'mobile') {
+        openMobileDrawer(pathId);
+      }
+    },
+  });
 
   // Auto-collapse heatmap legend after 5 s; reset when heatmap is toggled on
   useEffect(() => {
@@ -206,6 +247,36 @@ export const Canvas: React.FC = () => {
           onHide={() => { setShowHints(false); localStorage.setItem('showEditHints', 'false'); }}
         />
       )}
+
+      {/* Long-press context menu */}
+      {contextMenu && (() => {
+        const cmPath = svgDocument?.paths.find(p => p.id === contextMenu.pathId);
+        return (
+          <PathContextMenu
+            pathId={contextMenu.pathId}
+            x={contextMenu.x}
+            y={contextMenu.y}
+            isVisible={cmPath?.visible !== false}
+            tier={deviceTier}
+            onHeal={() => {
+              selectPath(contextMenu.pathId);
+              window.dispatchEvent(new CustomEvent('openSmartHeal'));
+            }}
+            onSmooth={() => {
+              selectPath(contextMenu.pathId);
+              window.dispatchEvent(new CustomEvent('openSmooth'));
+            }}
+            onDelete={() => deletePath(contextMenu.pathId, 'Delete Path')}
+            onHide={() => togglePathVisibility(contextMenu.pathId)}
+            onEdit={() => {
+              selectPath(contextMenu.pathId);
+              setEditingPath(contextMenu.pathId);
+              setTool('edit');
+            }}
+            onDismiss={() => setContextMenu(null)}
+          />
+        );
+      })()}
     </>
   );
 };

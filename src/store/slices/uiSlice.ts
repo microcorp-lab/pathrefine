@@ -20,6 +20,9 @@ export interface UISlice {
   codePanelHeight:            number;
   pathAlignmentPreview:       Path[] | null;
   pathAlignmentSelectionMode: 'none' | 'source' | 'target';
+  /** Mobile bottom drawer — open/close state and which path it shows */
+  mobileDrawerOpen:           boolean;
+  mobileDrawerPathId:         string | null;
 
   setZoom:                      (zoom: number) => void;
   setPan:                       (x: number, y: number) => void;
@@ -31,6 +34,8 @@ export interface UISlice {
   setCodePanelHeight:           (height: number) => void;
   setPathAlignmentPreview:      (paths: Path[] | null) => void;
   setPathAlignmentSelectionMode:(mode: 'none' | 'source' | 'target') => void;
+  openMobileDrawer:             (pathId: string) => void;
+  closeMobileDrawer:            () => void;
 }
 
 // ── Slice factory ─────────────────────────────────────────────────────────────
@@ -49,6 +54,8 @@ export function createUISlice(set: (fn: any) => void, _get: () => any): UISlice 
     codePanelHeight:            parseFloat(localStorage.getItem('codePanelHeight') || '0.35'),
     pathAlignmentPreview:       null,
     pathAlignmentSelectionMode: 'none',
+    mobileDrawerOpen:           false,
+    mobileDrawerPathId:         null,
 
     // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -79,5 +86,8 @@ export function createUISlice(set: (fn: any) => void, _get: () => any): UISlice 
 
     setPathAlignmentPreview:       (paths) => set(() => ({ pathAlignmentPreview: paths })),
     setPathAlignmentSelectionMode: (mode)  => set(() => ({ pathAlignmentSelectionMode: mode })),
+
+    openMobileDrawer:  (pathId) => set(() => ({ mobileDrawerOpen: true, mobileDrawerPathId: pathId })),
+    closeMobileDrawer: ()       => set(() => ({ mobileDrawerOpen: false })),
   };
 }

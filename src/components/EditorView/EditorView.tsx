@@ -8,6 +8,8 @@ import { ImageConverter } from '../ImageConverter/ImageConverter';
 import { ExportSVGModal } from '../ExportSVGModal';
 import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
 import { SmoothPathModal } from '../SmoothPathModal/SmoothPathModal';
+import { MobilePathDrawer } from '../MobilePathDrawer/MobilePathDrawer';
+import { TouchActionBar } from '../TouchActionBar/TouchActionBar';
 import { useEditorStore } from '../../store/editorStore';
 import { exportSVG, parseSVG } from '../../engine/parser';
 import { applySvgo } from '../../engine/svgoOptimize';
@@ -15,9 +17,9 @@ import { mergeSimilarPaths, mergeSelectedPaths } from '../../engine/pathMerging'
 import { autoColorize } from '../../engine/pathEditor';
 import { perfectSquare } from '../../engine/perfectSquare';
 import { shouldIgnoreKeyboardShortcut } from '../../utils/keyboard';
+import { useDeviceTier } from '../../hooks/useDeviceTier';
 import { FolderOpen, Camera, Save, FileCode, Image, Sparkles, FileUp, User } from 'lucide-react';
 import { Trash2 } from 'lucide-react';
-import { MobileNotice } from '../MobileNotice';
 import { Dropdown } from '../Dropdown';
 import { toast } from 'sonner';
 import { ProFeaturesContext } from '../../context/ProFeaturesContext';
@@ -25,6 +27,8 @@ import { track } from '../../utils/analytics';
 
 export function EditorView() {
   const navigate = useNavigate();
+  
+  const deviceTier = useDeviceTier();
   
   // Get PRO features from context
   const proFeatures = useContext(ProFeaturesContext);
@@ -40,6 +44,7 @@ export function EditorView() {
   } = proFeatures.components;
   const { useAuthStore } = proFeatures.hooks;
   const user = useAuthStore((state) => state.user);
+  const isPro = useAuthStore((state) => state.isPro);
   
   const svgDocument = useEditorStore((state) => state.svgDocument);
   const setSVGDocument = useEditorStore((state) => state.setSVGDocument);
@@ -112,6 +117,18 @@ export function EditorView() {
     const handleOpenConverter = () => setShowConverter(true);
     window.addEventListener('openConverter', handleOpenConverter);
     return () => window.removeEventListener('openConverter', handleOpenConverter);
+  }, []);
+
+  // Listen for context-menu events dispatched from PathContextMenu (touch long-press)
+  useEffect(() => {
+    const handleOpenSmartHeal = () => setShowSmartHeal(true);
+    const handleOpenSmooth    = () => setShowSmoothPath(true);
+    window.addEventListener('openSmartHeal', handleOpenSmartHeal);
+    window.addEventListener('openSmooth',    handleOpenSmooth);
+    return () => {
+      window.removeEventListener('openSmartHeal', handleOpenSmartHeal);
+      window.removeEventListener('openSmooth',    handleOpenSmooth);
+    };
   }, []);
 
   // Check for success URL param (Stripe return)
@@ -328,6 +345,10 @@ export function EditorView() {
       // Auto-colorize: C
       if (e.key === 'c' && !e.metaKey && !e.ctrlKey && svgDocument && svgDocument.paths.length > 0) {
         e.preventDefault();
+        if (!isPro) {
+          window.dispatchEvent(new CustomEvent('showProFeature', { detail: { feature: 'autoColorize' } }));
+          return;
+        }
         const updatePath = useEditorStore.getState().updatePath;
         const targetPathIds = selectedPathIds.length > 0 ? selectedPathIds : svgDocument.paths.map(p => p.id);
         
@@ -380,7 +401,7 @@ export function EditorView() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDirectDownload, undo, redo, toggleHelp, toggleHeatmap, toggleCodePanel, showHelp, svgDocument, selectedPathIds, setSVGDocument, deletePath, setTool]);
+  }, [handleDirectDownload, undo, redo, toggleHelp, toggleHeatmap, toggleCodePanel, showHelp, svgDocument, selectedPathIds, setSVGDocument, deletePath, setTool, isPro]);
 
   const handleManageSubscription = async () => {
     try {
@@ -659,7 +680,18 @@ export function EditorView() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         <Toolbar />
-        <CanvasWithCode />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <CanvasWithCode />
+          {/* Touch action bar — tablet and mobile only, replaces keyboard shortcuts */}
+          {deviceTier !== 'desktop' && svgDocument && (
+            <TouchActionBar
+              tier={deviceTier}
+              onHeal={() => setShowSmartHeal(true)}
+              onSmooth={() => setShowSmoothPath(true)}
+              onExport={() => setShowExportSVGModal(true)}
+            />
+          )}
+        </div>
         <PropertiesPanel />
       </div>
       
@@ -756,8 +788,8 @@ export function EditorView() {
         onClose={() => setShowAuthModal(false)} 
       />
       
-      {/* Mobile Notice */}
-      <MobileNotice />
+      {/* Mobile bottom drawer — shown on phones when a path is tapped */}
+      <MobilePathDrawer />
     </div>
   );
 }

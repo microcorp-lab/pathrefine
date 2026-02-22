@@ -50,6 +50,21 @@ export async function uploadSVGFixture(page: Page, filename: string): Promise<vo
 }
 
 /**
+ * Load the demo on a touch device (mobile/tablet).
+ *
+ * On these viewports the PropertiesPanel may be absent or collapsed, so we
+ * cannot rely on "All Paths" appearing.  Instead we wait for the TouchActionBar's
+ * "Undo" button to become visible — that element is only rendered once
+ * `svgDocument` is set in the store.
+ */
+export async function loadDemoTouch(page: Page): Promise<void> {
+  await page.goto('/');
+  await page.getByText('Fix Broken Logo').click();
+  // TouchActionBar (and its Undo button) appears only after svgDocument is loaded
+  await expect(page.getByRole('button', { name: 'Undo' }).first()).toBeVisible({ timeout: 12_000 });
+}
+
+/**
  * Read the numeric path count shown in the PropertiesPanel ("Paths: N").
  * Returns 0 if the value cannot be found.
  */

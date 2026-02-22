@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useState } from 'react';
 import { useEditorStore } from '../../store/editorStore';
+import { useDeviceTier } from '../../hooks/useDeviceTier';
 import { smoothPath } from '../../engine/pathSmoothing';
 import { countAnchorPoints } from '../../engine/pathAnalysis';
 import { SmartHealModal } from '../SmartHealModal/SmartHealModal';
@@ -25,10 +26,17 @@ export const Toolbar: React.FC = () => {
   const hasProFeatures = !!proFeatures.isProVersion;
   const AutoColorizeModal = proFeatures.components.AutoColorizeModal;
   const AutoRefineModal = proFeatures.components.AutoRefineModal;
+  const { useAuthStore } = proFeatures.hooks;
+  const isPro = useAuthStore((state) => state.isPro);
+  
+  const deviceTier = useDeviceTier();
+  // On mobile, the TouchActionBar + bottom drawer replace the toolbar entirely
+  // (toolbar is narrow vertical and inaccessible on small screens)
   
   const setSVGDocument = useEditorStore(state => state.setSVGDocument);
   const svgDocument = useEditorStore(state => state.svgDocument);
   const selectedPathIds = useEditorStore(state => state.selectedPathIds);
+  const toggleUpgradeModal = useEditorStore(state => state.toggleUpgradeModal);
   const editingPathId = useEditorStore(state => state.editingPathId);
   const selectedPointIndices = useEditorStore(state => state.selectedPointIndices);
   const clearPointSelection = useEditorStore(state => state.clearPointSelection);
@@ -72,18 +80,26 @@ export const Toolbar: React.FC = () => {
       toast.warning('Load an SVG first');
       return;
     }
+    if (!isPro) {
+      toggleUpgradeModal();
+      return;
+    }
     track({ name: 'auto_colorize_opened' });
     setShowAutoColorizeModal(true);
-  }, [svgDocument]);
+  }, [svgDocument, isPro, toggleUpgradeModal]);
 
   const handleAutoRefine = useCallback(() => {
     if (!svgDocument || selectedPathIds.length === 0) {
       toast.warning('Select a path first');
       return;
     }
+    if (!isPro) {
+      toggleUpgradeModal();
+      return;
+    }
     track({ name: 'auto_refine_opened' });
     setShowAutoRefineModal(true);
-  }, [svgDocument, selectedPathIds]);
+  }, [svgDocument, selectedPathIds, isPro, toggleUpgradeModal]);
 
   const handleApplySmooth = useCallback((
     mode: 'polish' | 'organic',
@@ -247,6 +263,8 @@ export const Toolbar: React.FC = () => {
 
   return (
     <>
+    {/* On mobile, hide the side toolbar — TouchActionBar and MobilePathDrawer handle everything */}
+    {deviceTier !== 'mobile' && (
     <div className="w-16 bg-bg-secondary border-r border-border flex flex-col items-center py-2 sm:py-4 gap-1 sm:gap-2 overflow-y-auto hide-scrollbar">
       
       {/* ACTIONS - Path Operations */}
@@ -438,6 +456,7 @@ export const Toolbar: React.FC = () => {
       />
       */}
     </div>
+    )} {/* end deviceTier !== 'mobile' */}
 
       {/* Modals */}
       <PerfectSquareModal 

@@ -44,3 +44,10 @@ export const useEditorStore = create<StoreState>()((set, get) => ({
   ...createCodeEditorSlice(set, get),
   ...createProFeaturesSlice(set, get),
 }));
+
+// Expose the store on window in development so Playwright tests can call
+// store actions directly (e.g., openMobileDrawer) without needing to
+// simulate real touch hit-testing against SVG path geometry.
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__editorStore = useEditorStore;
+}

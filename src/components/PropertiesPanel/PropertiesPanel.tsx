@@ -9,6 +9,7 @@ import {
 } from '../../engine/pathAnalysis';
 import { exportSVG } from '../../engine/parser';
 import { Eye, EyeOff, Trash2, ChevronRight, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { useDeviceTier } from '../../hooks/useDeviceTier';
 
 export const PropertiesPanel: React.FC = () => {
   const svgDocument = useEditorStore(state => state.svgDocument);
@@ -55,17 +56,13 @@ export const PropertiesPanel: React.FC = () => {
     return () => window.removeEventListener('keydown', cancel);
   }, [pendingDeleteAll, pendingDeleteId]);
 
-  // Auto-collapse on mobile
+  // Replace scattered window.innerWidth guards with single tier hook
+  const deviceTier = useDeviceTier();
+
+  // On tablet, start collapsed so panel doesn't intrude on canvas
   useEffect(() => {
-    const checkMobile = () => {
-      if (window.innerWidth < 768) {
-        setIsCollapsed(true);
-      }
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    if (deviceTier === 'tablet') setIsCollapsed(true);
+  }, [deviceTier]);
 
   // Generate SVG code (needed first — byte length feeds the analysis)
   const svgCode = useMemo(() => {
@@ -87,23 +84,56 @@ export const PropertiesPanel: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Mobile: fully hidden, MobilePathDrawer handles everything
+  if (deviceTier === 'mobile') return null;
+
+  // Compute tier-aware class helpers
+  const isTablet = deviceTier === 'tablet';
+
+  // Tablet: fixed overlay on right edge; desktop: inline column
+  const outerClass = isTablet
+    ? `fixed top-0 right-0 bottom-0 z-30 w-72 bg-bg-secondary border-l border-border shadow-2xl transition-transform duration-300 ${isCollapsed ? 'translate-x-full' : 'translate-x-0'}`
+    : `${isCollapsed ? 'w-0' : 'w-64'} bg-bg-secondary border-l border-border transition-all duration-300 overflow-hidden relative`;
+
   if (!svgDocument) {
     return (
-      <div className={`${isCollapsed ? 'w-0' : 'w-64'} bg-bg-secondary border-l border-border transition-all duration-300 overflow-hidden relative`}>
-        {!isCollapsed && (
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-4">Properties</h3>
-            <p className="text-text-secondary text-sm">No document loaded</p>
-          </div>
+      <>
+        {/* Tablet toggle tab — visible even when panel is collapsed */}
+        {isTablet && (
+          <button
+            onClick={() => setIsCollapsed(c => !c)}
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-bg-secondary border border-r-0 border-border rounded-l-lg px-1 py-3 shadow-md hover:bg-bg-tertiary transition-colors"
+            title={isCollapsed ? 'Show properties' : 'Hide properties'}
+          >
+            {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </button>
         )}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-bg-secondary border border-r-0 border-border rounded-l px-1 py-2 hover:bg-bg-tertiary transition-colors md:hidden"
-          title={isCollapsed ? 'Show properties' : 'Hide properties'}
-        >
-          {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </button>
-      </div>
+        {/* Backdrop for tablet overlay */}
+        {isTablet && !isCollapsed && (
+          <div
+            className="fixed inset-0 z-20"
+            onClick={() => setIsCollapsed(true)}
+          />
+        )}
+        <div className={outerClass}>
+          {(!isCollapsed || !isTablet) && !isCollapsed && (
+            <div className="p-4">
+              <h3 className="text-lg font-semibold mb-4">Properties</h3>
+              <p className="text-text-secondary text-sm">No document loaded</p>
+            </div>
+          )}
+          {/* Desktop collapse toggle */}
+          {!isTablet && (
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-bg-secondary border border-r-0 border-border rounded-l px-1 py-2 hover:bg-bg-tertiary transition-colors"
+              title={isCollapsed ? 'Show properties' : 'Hide properties'}
+            >
+              {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </button>
+          )}
+        </div>
+      </>
     );
   }
 
@@ -112,7 +142,25 @@ export const PropertiesPanel: React.FC = () => {
   );
 
   return (
-    <div className={`${isCollapsed ? 'w-0' : 'w-64'} bg-bg-secondary border-l border-border transition-all duration-300 overflow-hidden relative`}>
+    <>
+      {/* Tablet toggle tab — visible even when panel is collapsed */}
+      {isTablet && (
+        <button
+          onClick={() => setIsCollapsed(c => !c)}
+          className="fixed right-0 top-1/2 -translate-y-1/2 z-40 bg-bg-secondary border border-r-0 border-border rounded-l-lg px-1 py-3 shadow-md hover:bg-bg-tertiary transition-colors"
+          title={isCollapsed ? 'Show properties' : 'Hide properties'}
+        >
+          {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+      )}
+      {/* Backdrop for tablet overlay */}
+      {isTablet && !isCollapsed && (
+        <div
+          className="fixed inset-0 z-20"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+    <div className={outerClass}>
       {!isCollapsed && (
         <div className="p-4 overflow-y-auto h-full">
           <h3 className="text-lg font-semibold mb-4">Properties</h3>
@@ -654,13 +702,17 @@ export const PropertiesPanel: React.FC = () => {
         </div>
       )}
       
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-bg-secondary border border-r-0 border-border rounded-l px-1 py-2 hover:bg-bg-tertiary transition-colors md:hidden"
-        title={isCollapsed ? 'Show properties' : 'Hide properties'}
-      >
-        {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-      </button>
+      {/* Desktop collapse toggle */}
+      {!isTablet && (
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-bg-secondary border border-r-0 border-border rounded-l px-1 py-2 hover:bg-bg-tertiary transition-colors"
+          title={isCollapsed ? 'Show properties' : 'Hide properties'}
+        >
+          {isCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+        </button>
+      )}
     </div>
+    </>
   );
 };
