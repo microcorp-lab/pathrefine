@@ -11,7 +11,7 @@ import { segmentsToPathData } from './parser';
  * Calculate the importance score of a point (0-1, where 1 is most important)
  * Considers: curvature, position, and local geometry
  */
-function calculatePointImportance(
+export function calculatePointImportance(
   prev: Point,
   current: Point,
   next: Point
