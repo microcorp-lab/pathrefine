@@ -180,13 +180,50 @@ describe('parser', () => {
       expect(segments[0].start.y).toBeCloseTo(20.75);
     });
 
+    it('should handle sign-separated numbers (no spaces around minus)', () => {
+      // Compact SVG: "1-2.4-3" means [1, -2.4, -3]
+      // This is the notation real tools (Lucide, Figma) use in arc/curve commands.
+      const segments = parsePathData('M 20.5 10 a 2.5 2.5 0 0 1-2.4-3');
+      expect(segments.length).toBeGreaterThanOrEqual(2);
+      // Arc endpoint: relative (-2.4, -3) from (20.5, 10) = (18.1, 7)
+      // The arc may be split into multiple C segments; check the final one.
+      const last = segments[segments.length - 1];
+      expect(last.end.x).toBeCloseTo(18.1, 1);
+      expect(last.end.y).toBeCloseTo(7, 1);
+    });
+
+    it('should handle decimal-separated numbers (no spaces between consecutive decimals)', () => {
+      // "-.3.2-.8.3" means [-0.3, 0.2, -0.8, 0.3] — second decimal starts a new number
+      const segments = parsePathData('M 0 0 c-.3.2-.8.3-1.2.3');
+      expect(segments).toHaveLength(2);
+      expect(segments[1].type).toBe('C');
+      // relative c: cp1=(-0.3, 0.2), cp2=(-0.8, 0.3), end=(-1.2, 0.3)
+      expect(segments[1].points[0].x).toBeCloseTo(-0.3, 3);
+      expect(segments[1].points[0].y).toBeCloseTo(0.2, 3);
+      expect(segments[1].points[1].x).toBeCloseTo(-0.8, 3);
+      expect(segments[1].points[1].y).toBeCloseTo(0.3, 3);
+      expect(segments[1].end.x).toBeCloseTo(-1.2, 3);
+      expect(segments[1].end.y).toBeCloseTo(0.3, 3);
+    });
+
+    it('should parse real-world compact Lucide-style path (donut arc)', () => {
+      // Excerpt from the donut SVG — fails with split(/\s+/) tokenizer
+      const d = 'M20.5 10a2.5 2.5 0 0 1-2.4-3H18a2.95 2.95 0 0 1-2.6-4.4';
+      const segments = parsePathData(d);
+      // M + arc (→C) + H(→L) + arc (→C) = M + ≥1 C + L + ≥1 C
+      expect(segments.length).toBeGreaterThanOrEqual(4);
+      expect(segments[0].type).toBe('M');
+      expect(segments[0].start.x).toBeCloseTo(20.5);
+      expect(segments[0].start.y).toBeCloseTo(10);
+      // H 18 must land at x=18, y=10 (same y as currentPoint after first arc)
+      const hSeg = segments.find(s => s.type === 'L' && Math.abs(s.end.x - 18) < 0.5);
+      expect(hSeg).toBeDefined();
+    });
+
     it('should handle empty path data', () => {
       const segments = parsePathData('');
       expect(segments).toHaveLength(0);
     });
-
-    // Note: H, V, S, A commands and implicit lineto are not yet implemented in parser
-    // These are less common SVG path commands that could be added in the future
   });
 
   describe('segmentsToPathData', () => {

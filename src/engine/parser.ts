@@ -359,11 +359,11 @@ export function parsePathData(d: string): BezierSegment[] {
   for (const cmd of commands) {
     const type = cmd[0].toUpperCase() as BezierSegment['type'];
     const isRelative = cmd[0] === cmd[0].toLowerCase();
-    const coords = cmd
-      .slice(1)
-      .trim()
-      .split(/\s+/)
-      .map(parseFloat)
+    // SVG path data uses sign and decimal point as implicit separators, e.g.
+    // "1-2.4-3" → [1, -2.4, -3] and "-.3.2-.8" → [-0.3, 0.2, -0.8].
+    // split(/\s+/) fails for these cases; a regex tokenizer handles all forms.
+    const coords = [...cmd.slice(1).matchAll(/[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/g)]
+      .map(m => parseFloat(m[0]))
       .filter(n => !isNaN(n));
 
     switch (type) {
