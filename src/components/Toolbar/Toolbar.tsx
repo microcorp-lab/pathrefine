@@ -9,9 +9,10 @@ import { PerfectSquareModal } from '../PerfectSquareModal/PerfectSquareModal';
 import { SmoothPathModal } from '../SmoothPathModal/SmoothPathModal';
 import { MergePathsModal } from '../MergePathsModal/MergePathsModal';
 import { PathAlignmentModal } from '../PathAlignmentModal/PathAlignmentModal';
+import { BooleanOpsModal } from '../BooleanOpsModal/BooleanOpsModal';
 import { RestrictedFeature } from '../RestrictedFeature';
 import { alignPathsToPath } from '../../engine/alignment';
-import { Activity, Waves, Link, Palette, Sparkles, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2 } from 'lucide-react';
+import { Activity, Waves, Link, Palette, Merge, Square, Grid3x3, Flame, AlignVerticalDistributeCenter, Wand2, Scissors } from 'lucide-react';
 import type { PathAlignment, Path } from '../../types/svg';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ export const Toolbar: React.FC = () => {
   const [showSmartHealModal, setShowSmartHealModal] = useState(false);
   const [showMergePathsModal, setShowMergePathsModal] = useState(false);
   const [showPathAlignmentModal, setShowPathAlignmentModal] = useState(false);
+  const [showBooleanOpsModal, setShowBooleanOpsModal] = useState(false);
 
   // Listen for keyboard shortcut to open Path Alignment
   React.useEffect(() => {
@@ -63,6 +65,17 @@ export const Toolbar: React.FC = () => {
     };
     window.addEventListener('openPathAlignment', handleOpenPathAlignment);
     return () => window.removeEventListener('openPathAlignment', handleOpenPathAlignment);
+  }, [svgDocument]);
+
+  // Listen for keyboard shortcut to open Boolean Ops (B)
+  React.useEffect(() => {
+    const handleOpenBooleanOps = () => {
+      if (svgDocument && svgDocument.paths.length >= 2) {
+        setShowBooleanOpsModal(true);
+      }
+    };
+    window.addEventListener('openBooleanOps', handleOpenBooleanOps);
+    return () => window.removeEventListener('openBooleanOps', handleOpenBooleanOps);
   }, [svgDocument]);
 
   const handleSmoothPath = useCallback(() => {
@@ -234,6 +247,14 @@ export const Toolbar: React.FC = () => {
     setShowPathAlignmentModal(true);
   }, [svgDocument]);
 
+  const handleBooleanOps = useCallback(() => {
+    if (!svgDocument || svgDocument.paths.length < 2) {
+      toast.warning('Need at least 2 paths for Boolean Subtract');
+      return;
+    }
+    setShowBooleanOpsModal(true);
+  }, [svgDocument]);
+
   const handleApplyPathAlignment = useCallback((alignment: PathAlignment) => {
     if (!svgDocument) return;
 
@@ -334,10 +355,21 @@ export const Toolbar: React.FC = () => {
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
             title={selectedPathIds.length >= 2 ? "Merge Selected Paths (M)" : "Merge Paths (M) - Combine similar colors"}
           >
-            <Palette size={20} strokeWidth={1.5} />
+            <Merge size={20} strokeWidth={1.5} />
           </button>
         </Tooltip>
         
+        <Tooltip label="Boolean Subtract" shortcut="B" description="Cut one path out of the paths below it">
+          <button
+            onClick={handleBooleanOps}
+            disabled={!svgDocument || svgDocument.paths.length < 2}
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Boolean Subtract (B) - Cut cutter path through paths below it"
+          >
+            <Scissors size={20} strokeWidth={1.5} />
+          </button>
+        </Tooltip>
+
         <Tooltip label="Path Alignment" shortcut="⇧A" description="Tile shapes along a path">
           <button
             onClick={handlePathAlignment}
@@ -364,7 +396,7 @@ export const Toolbar: React.FC = () => {
               className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center bg-bg-secondary text-text-secondary hover:bg-border hover:text-white text-lg sm:text-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed relative"
               title="Auto-colorize (C) - Replace colors with currentColor [PRO]"
             >
-              <Sparkles size={20} strokeWidth={1.5} />
+              <Palette size={20} strokeWidth={1.5} />
               <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 text-[8px] leading-none font-black tracking-wide bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md shadow-md border border-white/20">PRO</span>
             </button>
             </RestrictedFeature>
@@ -486,6 +518,11 @@ export const Toolbar: React.FC = () => {
       {showMergePathsModal && (
         <MergePathsModal
           onClose={() => setShowMergePathsModal(false)}
+        />
+      )}
+      {showBooleanOpsModal && (
+        <BooleanOpsModal
+          onClose={() => setShowBooleanOpsModal(false)}
         />
       )}
       {showPathAlignmentModal && svgDocument && (

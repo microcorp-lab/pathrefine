@@ -382,6 +382,12 @@ export function EditorView() {
         setShowSmoothPath(true);
       }
       
+      // Boolean Subtract: B
+      if (e.key === 'b' && !e.metaKey && !e.ctrlKey && svgDocument && svgDocument.paths.length >= 2) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('openBooleanOps'));
+      }
+      
       // Delete Paths: Cmd/Ctrl+Backspace (when paths are selected)
       // Note: Regular Delete/Backspace is reserved for deleting points in Edit mode
       if (e.key === 'Backspace' && (e.metaKey || e.ctrlKey) && selectedPathIds.length > 0) {

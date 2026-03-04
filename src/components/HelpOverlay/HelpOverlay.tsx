@@ -139,6 +139,10 @@ export const HelpOverlay: React.FC = () => {
                   <kbd className="px-3 py-1.5 bg-bg-tertiary rounded border border-border">M</kbd>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span>Boolean Subtract</span>
+                  <kbd className="px-3 py-1.5 bg-bg-tertiary rounded border border-border">B</kbd>
+                </div>
+                <div className="flex items-center justify-between">
                   <span>Path Alignment</span>
                   <kbd className="px-3 py-1.5 bg-bg-tertiary rounded border border-border">Shift+A</kbd>
                 </div>

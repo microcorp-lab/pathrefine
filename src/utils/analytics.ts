@@ -46,7 +46,13 @@ export type AnalyticsEvent =
   | { name: 'upgrade_modal_shown' }
 
   /** User clicked the "Upgrade to Pro" CTA. */
-  | { name: 'upgrade_clicked' };
+  | { name: 'upgrade_clicked' }
+
+  /** Boolean Subtract modal opened. */
+  | { name: 'boolean_ops_opened' }
+
+  /** Boolean Subtract applied to paths. */
+  | { name: 'boolean_ops_applied'; paths_cut: number; paths_removed: number };
 
 // ─── Core send function ───────────────────────────────────────────────────────
 

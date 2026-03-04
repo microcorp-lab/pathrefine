@@ -44,12 +44,12 @@ export interface UISlice {
 export function createUISlice(set: (fn: any) => void, _get: () => any): UISlice {
   return {
     // ── State ────────────────────────────────────────────────────────────────
-    zoom:                       1,
-    pan:                        { x: 0, y: 0 },
-    snapToGrid:                 false,
-    gridSize:                   20,
+    zoom:                       parseFloat(localStorage.getItem('zoom') || '1'),
+    pan:                        JSON.parse(localStorage.getItem('pan') || '{"x":0,"y":0}'),
+    snapToGrid:                 localStorage.getItem('snapToGrid') === 'true',
+    gridSize:                   parseInt(localStorage.getItem('gridSize') || '20', 10),
     showHelp:                   false,
-    showHeatmap:                false,
+    showHeatmap:                localStorage.getItem('showHeatmap') === 'true',
     showCodePanel:              localStorage.getItem('showCodePanel') === 'true',
     codePanelHeight:            parseFloat(localStorage.getItem('codePanelHeight') || '0.35'),
     pathAlignmentPreview:       null,
@@ -59,17 +59,38 @@ export function createUISlice(set: (fn: any) => void, _get: () => any): UISlice 
 
     // ── Actions ──────────────────────────────────────────────────────────────
 
-    setZoom: (zoom) => set(() => ({ zoom: Math.max(0.1, Math.min(10, zoom)) })),
+    setZoom: (zoom) => {
+      const clamped = Math.max(0.1, Math.min(10, zoom));
+      localStorage.setItem('zoom', clamped.toString());
+      set(() => ({ zoom: clamped }));
+    },
 
-    setPan: (x, y) => set(() => ({ pan: { x, y } })),
+    setPan: (x, y) => {
+      localStorage.setItem('pan', JSON.stringify({ x, y }));
+      set(() => ({ pan: { x, y } }));
+    },
 
-    toggleSnapToGrid: () => set((state: UISlice) => ({ snapToGrid: !state.snapToGrid })),
+    toggleSnapToGrid: () =>
+      set((state: UISlice) => {
+        const newValue = !state.snapToGrid;
+        localStorage.setItem('snapToGrid', newValue.toString());
+        return { snapToGrid: newValue };
+      }),
 
-    setGridSize: (size) => set(() => ({ gridSize: Math.max(5, Math.min(100, size)) })),
+    setGridSize: (size) => {
+      const clamped = Math.max(5, Math.min(100, size));
+      localStorage.setItem('gridSize', clamped.toString());
+      set(() => ({ gridSize: clamped }));
+    },
 
     toggleHelp: () => set((state: UISlice) => ({ showHelp: !state.showHelp })),
 
-    toggleHeatmap: () => set((state: UISlice) => ({ showHeatmap: !state.showHeatmap })),
+    toggleHeatmap: () =>
+      set((state: UISlice) => {
+        const newValue = !state.showHeatmap;
+        localStorage.setItem('showHeatmap', newValue.toString());
+        return { showHeatmap: newValue };
+      }),
 
     toggleCodePanel: () =>
       set((state: UISlice) => {
